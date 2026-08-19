@@ -761,67 +761,84 @@
     }
 
     // ============================================
-    // RECENT ACTIVITY LOG - PERSISTENT
+    // ACTIVITY LOG - PERSISTENT (localStorage + Sheet sync)
     // ============================================
     let activityLog = [];
     let monthlyRecords = [];
 
-    async function loadActivityLog() {
+    // Load from localStorage on startup
+    function loadActivityLogFromStorage() {
         try {
-            const response = await fetch(WEB_APP_URL + '?action=getActivityLog', { method: 'GET' });
-            const result = await response.json();
-            if (result.result === 'success' && result.activities) {
-                activityLog = result.activities;
-                renderActivityLog();
-                monthlyRecords = result.activities || [];
-                populateYearFilter();
-                renderMonthlyTable();
-            } else {
-                document.getElementById('activityLog').innerHTML = 
-                    `<div class="log-entry" style="color:#94a3b8; font-style:italic;">No recent activity yet</div>`;
-                monthlyRecords = [];
-                populateYearFilter();
-                renderMonthlyTable();
+            const stored = localStorage.getItem('planActivityLog');
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed) && parsed.length) {
+                    activityLog = parsed;
+                    monthlyRecords = parsed;
+                    return true;
+                }
             }
-        } catch (e) {
-            console.error('Error loading activity log:', e);
-            document.getElementById('activityLog').innerHTML = 
-                `<div class="log-entry" style="color:#94a3b8; font-style:italic;">Unable to load activities</div>`;
-        }
+        } catch (e) {}
+        return false;
     }
 
-    function populateYearFilter() {
-        const yearSelect = document.getElementById('monthlyFilterYear');
-        const years = new Set();
-        monthlyRecords.forEach(r => {
-            try {
-                const d = new Date(r.time);
-                if (!isNaN(d.getTime())) {
-                    years.add(d.getFullYear());
-                }
-            } catch (e) {}
-        });
+    function saveActivityLogToStorage() {
+        try {
+            localStorage.setItem('planActivityLog', JSON.stringify(activityLog));
+        } catch (e) {}
+    }
+
+    async function loadActivityLogFromSheet() {
+    try {
+        // Get both activity log and monthly activity
+        const response = await fetch(WEB_APP_URL + '?action=getMonthlyActivity', { method: 'GET' });
+        const result = await response.json();
+        if (result.result === 'success' && result.activities && result.activities.length) {
+            // Use the monthly activity data which has full details
+            activityLog = result.activities.map(a => ({
+                time: a.time,
+                action: a.action,
+                province: a.province,
+                city: a.city,
+                details: a.details
+            }));
+            monthlyRecords = result.activities;
+            saveActivityLogToStorage();
+            return true;
+        }
+    } catch (e) {
+        console.error('Error loading activity log from sheet:', e);
+    }
+    return false;
+}
+
+    async function loadActivityLog() {
+        // First try localStorage
+        const hasLocal = loadActivityLogFromStorage();
         
-        const currentYear = new Date().getFullYear();
-        years.add(currentYear);
+        // Then try to fetch from sheet (will override if sheet has data)
+        const fromSheet = await loadActivityLogFromSheet();
         
-        const sortedYears = Array.from(years).sort((a, b) => b - a);
+        // If sheet had data, use it; otherwise keep local
+        if (!fromSheet && !hasLocal) {
+            // No data anywhere, start with empty
+            activityLog = [];
+            monthlyRecords = [];
+        }
         
-        yearSelect.innerHTML = '<option value="all">All Years</option>';
-        sortedYears.forEach(year => {
-            const opt = document.createElement('option');
-            opt.value = year;
-            opt.textContent = year;
-            yearSelect.appendChild(opt);
-        });
+        // Render
+        populateYearFilter();
+        renderActivityLog();
+        renderMonthlyTable();
     }
 
     async function addActivityLog(action, province, city, details = '') {
         const time = new Date().toISOString();
         const entry = { time, action, province, city, details };
         
+        // Send to sheet
         try {
-            const response = await fetch(WEB_APP_URL, {
+            await fetch(WEB_APP_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -829,19 +846,16 @@
                     entry: entry
                 })
             });
-            const result = await response.json();
-            if (result.result === 'success') {
-                console.log('Activity logged:', entry);
-            } else {
-                console.error('Failed to log activity:', result.message);
-            }
         } catch (e) {
-            console.error('Error saving activity:', e);
+            console.error('Error saving activity to sheet:', e);
         }
         
+        // Add to local
         activityLog.unshift(entry);
-        if (activityLog.length > 50) activityLog.pop();
+        if (activityLog.length > 200) activityLog.pop();
         monthlyRecords = [...activityLog];
+        saveActivityLogToStorage();
+        
         populateYearFilter();
         renderActivityLog();
         renderMonthlyTable();
@@ -866,9 +880,39 @@
             return `<div class="log-entry">
                 <span class="log-time">${timeStr}</span>
                 <span class="log-badge ${badgeClass}">${e.action}</span>
-                <span class="log-detail"><strong>${e.province}</strong> · ${e.city}${detailText}</span>
+                <span class="log-detail"><strong>${e.province || ''}</strong> ${e.city ? '· ' + e.city : ''}${detailText}</span>
             </div>`;
         }).join('');
+    }
+
+    function populateYearFilter() {
+        const yearSelect = document.getElementById('monthlyFilterYear');
+        const years = new Set();
+        monthlyRecords.forEach(r => {
+            try {
+                const d = new Date(r.time);
+                if (!isNaN(d.getTime())) {
+                    years.add(d.getFullYear());
+                }
+            } catch (e) {}
+        });
+        
+        const currentYear = new Date().getFullYear();
+        years.add(currentYear);
+        
+        const sortedYears = Array.from(years).sort((a, b) => b - a);
+        
+        const currentVal = yearSelect.value;
+        yearSelect.innerHTML = '<option value="all">All Years</option>';
+        sortedYears.forEach(year => {
+            const opt = document.createElement('option');
+            opt.value = year;
+            opt.textContent = year;
+            yearSelect.appendChild(opt);
+        });
+        if (currentVal && sortedYears.includes(parseInt(currentVal))) {
+            yearSelect.value = currentVal;
+        }
     }
 
     // ============================================
@@ -909,17 +953,13 @@
         }
         
         if (!filtered.length) {
-            let filterText = '';
-            if (monthFilter !== 'all' || yearFilter !== 'all' || provinceFilter !== 'all') {
-                filterText = ' for ';
-                if (monthFilter !== 'all') filterText += monthFilter + ' ';
-                if (yearFilter !== 'all') filterText += yearFilter + ' ';
-                if (provinceFilter !== 'all') filterText += '· ' + provinceFilter + ' ';
-            }
-            tbody.innerHTML = `<tr class="no-records"><td colspan="6">No records found${filterText}</td></tr>`;
+            tbody.innerHTML = `<tr class="no-records"><td colspan="6">No records found</td></tr>`;
             document.getElementById('monthlyCount').textContent = '0';
             return;
         }
+        
+        // Sort by time descending (newest first)
+        filtered.sort((a, b) => new Date(b.time) - new Date(a.time));
         
         tbody.innerHTML = filtered.slice(0, 50).map(r => {
             let dateStr = '';
@@ -1077,7 +1117,7 @@
     // ============================================
     // CONFIG
     // ============================================
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxVmhzm3etQ8J0-kopFEHt-eJeo3IhYKHfrsq-YT5oK9izVn9kcFzq-r_wZC7XvjexO/exec';
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwrOX468vGw6IIBONq9O5INXlCHgjHfTm39vTKQr54V4_fav1w2kq6cN1NU3Vzh-4aI-w/exec';
     const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1AgNv7ljgvnsZ1SVd0xxxNi2WopiifdYIcVNgX9Yr82w/edit?usp=sharing';
 
     // ============================================
