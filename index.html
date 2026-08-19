@@ -647,7 +647,7 @@
     // ============================================
     // CONFIG
     // ============================================
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzgG0t-90T7nz-dwEW7J4NR6z1iUa77JAWRQAgeQ3xNLSObdlt1Cs7huA2AmbM8KA9FFA/exec';
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbynT-9YVEtSuvdPlbkVTGxI82izzkkH2i9bqWQc5c8woryShk-sZs2OMdArV9yynLlEuA/exec';
     const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1AgNv7ljgvnsZ1SVd0xxxNi2WopiifdYIcVNgX9Yr82w/edit?usp=sharing';
 
     // ============================================
@@ -952,7 +952,7 @@
     });
 
     // ============================================
-    // SUBMIT - Using POST without no-cors (proper CORS handling)
+    // SUBMIT
     // ============================================
     planForm.addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -984,33 +984,28 @@
         btn.innerHTML = '<span class="spinner"></span> Saving...';
 
         try {
-            // Use POST without no-cors - Apps Script will handle CORS
             const response = await fetch(WEB_APP_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
             
-            // Try to parse the response
             let result;
             try {
                 result = await response.json();
             } catch (e) {
-                // If response is not JSON, assume it worked
                 result = { result: 'success' };
             }
             
             if (result.result === 'success') {
                 showToast('✅ Success', 'Record saved to Google Sheet!', 'success');
                 
-                // Reset form
                 planForm.reset();
                 document.getElementById('plan_dateConducted').value = new Date().toISOString().split('T')[0];
                 document.getElementById('plan_region').value = 'Region_06';
                 planCity.innerHTML = '<option value="">Select City/Municipality...</option>';
                 document.getElementById('plan_reportingMonth').value = new Date().toLocaleString('default', { month: 'long' });
                 
-                // Refresh records if modal is open
                 if (recordsModal.classList.contains('active')) {
                     await loadRecords();
                 }
@@ -1019,7 +1014,6 @@
             }
         } catch (err) {
             console.error('Save error:', err);
-            // If fetch fails with CORS error, try no-cors mode as fallback
             try {
                 await fetch(WEB_APP_URL, {
                     method: 'POST',
@@ -1139,7 +1133,7 @@
     }
 
     // ============================================
-    // RENDER TABLE
+    // RENDER TABLE - STORE ACTUAL SHEET ROW NUMBER
     // ============================================
     async function renderTable(records) {
         if (picNames.length === 0) await loadPICNamesFromSheet();
@@ -1168,10 +1162,11 @@
 
         records.forEach((record, index) => {
             const rowNum = index + 1;
-            const actualRow = index + 2;
-            const isEditing = editingRowNumber === actualRow;
+            // IMPORTANT: Store the ACTUAL sheet row number (index + 2 because header is row 1)
+            const actualSheetRow = index + 2;
+            const isEditing = editingRowNumber === actualSheetRow;
 
-            html += `<tr class="${isEditing ? 'editing-row' : ''}" data-row="${actualRow}">`;
+            html += `<tr class="${isEditing ? 'editing-row' : ''}" data-row="${actualSheetRow}" data-record-index="${index}">`;
             html += `<td style="padding:0.3rem 0.3rem; border-bottom:1px solid #f1f5f9; color:#334155; font-size:0.65rem; text-align:center;">${rowNum}</td>`;
 
             columns.forEach(col => {
@@ -1228,11 +1223,11 @@
 
             html += `<td class="action-cell" style="padding:0.2rem 0.2rem; border-bottom:1px solid #f1f5f9; white-space:nowrap;">`;
             if (isEditing) {
-                html += `<button class="btn-action btn-save-edit" onclick="saveEditRow(${actualRow})" id="saveBtn_${actualRow}" style="padding:0.1rem 0.4rem; border:none; border-radius:4px; font-size:0.55rem; font-weight:600; cursor:pointer; background:#10b981; color:white; font-family:'Inter',sans-serif;"><i class="fas fa-save"></i><span class="btn-spinner"></span></button>`;
+                html += `<button class="btn-action btn-save-edit" onclick="saveEditRow(${actualSheetRow})" id="saveBtn_${actualSheetRow}" style="padding:0.1rem 0.4rem; border:none; border-radius:4px; font-size:0.55rem; font-weight:600; cursor:pointer; background:#10b981; color:white; font-family:'Inter',sans-serif;"><i class="fas fa-save"></i><span class="btn-spinner"></span></button>`;
                 html += `<button class="btn-action btn-cancel-edit" onclick="cancelEditRow()" style="padding:0.1rem 0.4rem; border:none; border-radius:4px; font-size:0.55rem; font-weight:600; cursor:pointer; background:#6b7280; color:white; font-family:'Inter',sans-serif;"><i class="fas fa-times"></i></button>`;
             } else {
-                html += `<button class="btn-action btn-edit" onclick="startEditRow(${actualRow})" style="padding:0.1rem 0.4rem; border:none; border-radius:4px; font-size:0.55rem; font-weight:600; cursor:pointer; background:#f59e0b; color:white; font-family:'Inter',sans-serif;"><i class="fas fa-pen"></i></button>`;
-                html += `<button class="btn-action btn-delete" onclick="deleteRecord(${actualRow})" id="deleteBtn_${actualRow}" style="padding:0.1rem 0.4rem; border:none; border-radius:4px; font-size:0.55rem; font-weight:600; cursor:pointer; background:#ef4444; color:white; font-family:'Inter',sans-serif;"><i class="fas fa-trash"></i><span class="btn-spinner"></span></button>`;
+                html += `<button class="btn-action btn-edit" onclick="startEditRow(${actualSheetRow})" style="padding:0.1rem 0.4rem; border:none; border-radius:4px; font-size:0.55rem; font-weight:600; cursor:pointer; background:#f59e0b; color:white; font-family:'Inter',sans-serif;"><i class="fas fa-pen"></i></button>`;
+                html += `<button class="btn-action btn-delete" onclick="deleteRecord(${actualSheetRow})" id="deleteBtn_${actualSheetRow}" style="padding:0.1rem 0.4rem; border:none; border-radius:4px; font-size:0.55rem; font-weight:600; cursor:pointer; background:#ef4444; color:white; font-family:'Inter',sans-serif;"><i class="fas fa-trash"></i><span class="btn-spinner"></span></button>`;
             }
             html += `</td></tr>`;
         });
@@ -1242,11 +1237,18 @@
         document.getElementById('displayCount').textContent = records.length;
     }
 
-    window.startEditRow = function(row) { editingRowNumber = row; applyRecordFilters(); };
-    window.cancelEditRow = function() { editingRowNumber = null; applyRecordFilters(); };
+    window.startEditRow = function(row) { 
+        editingRowNumber = row; 
+        applyRecordFilters(); 
+    };
+    
+    window.cancelEditRow = function() { 
+        editingRowNumber = null; 
+        applyRecordFilters(); 
+    };
 
     // ============================================
-    // SAVE EDIT ROW - FIXED
+    // SAVE EDIT ROW - COMPLETELY REWRITTEN
     // ============================================
     window.saveEditRow = async function(rowNumber) {
         const saveBtn = document.getElementById(`saveBtn_${rowNumber}`);
@@ -1265,6 +1267,7 @@
             return; 
         }
 
+        // Get all input values from the editing row
         const inputs = row.querySelectorAll('input, select, textarea');
         const updatedData = {};
         inputs.forEach(input => { 
@@ -1272,22 +1275,26 @@
             if (key) updatedData[key] = input.value; 
         });
 
-        const recordIndex = rowNumber - 2;
-        if (recordIndex < 0 || recordIndex >= filteredRecords.length) { 
-            showToast('❌ Error', 'Record not found.', 'error'); 
+        // Get the record from filteredRecords using data-record-index
+        const recordIndex = parseInt(row.dataset.recordIndex);
+        if (isNaN(recordIndex) || recordIndex < 0 || recordIndex >= filteredRecords.length) { 
+            showToast('❌ Error', 'Record not found in list.', 'error'); 
             if (saveBtn) { 
                 saveBtn.classList.remove('loading'); 
                 saveBtn.disabled = false; 
             } 
             return; 
         }
+
         const original = filteredRecords[recordIndex];
 
+        // Build the payload with all fields
         const payload = {
             action: 'updateRecord',
-            rowNumber: rowNumber,
+            rowNumber: rowNumber,  // This is the actual sheet row number
             formType: 'Plan_Monitoring',
             data: {
+                region: original['Region'] || '',
                 province: updatedData['Province'] || original['Province'] || '',
                 cityMun: updatedData['City/Municipality'] || original['City/Municipality'] || '',
                 typeMonitoring: updatedData['Type of Monitoring'] || original['Type of Monitoring'] || '',
@@ -1302,7 +1309,6 @@
         };
 
         try {
-            // Try normal POST first
             const response = await fetch(WEB_APP_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1324,8 +1330,8 @@
                 showToast('❌ Error', result.message || 'Update failed.', 'error');
             }
         } catch (e) { 
-            // Fallback to no-cors if CORS fails
-            console.error('Update error, trying no-cors fallback:', e);
+            console.error('Update error:', e);
+            // Try no-cors fallback
             try {
                 await fetch(WEB_APP_URL, {
                     method: 'POST',
@@ -1361,14 +1367,16 @@
         }
         
         try {
+            const payload = { 
+                action: 'deleteRecord', 
+                rowNumber: rowNumber, 
+                formType: 'Plan_Monitoring' 
+            };
+            
             const response = await fetch(WEB_APP_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    action: 'deleteRecord', 
-                    rowNumber: rowNumber, 
-                    formType: 'Plan_Monitoring' 
-                })
+                body: JSON.stringify(payload)
             });
             
             let result;
@@ -1386,7 +1394,7 @@
                 showToast('❌ Error', result.message || 'Delete failed.', 'error');
             }
         } catch (e) { 
-            console.error('Delete error, trying no-cors fallback:', e);
+            console.error('Delete error:', e);
             try {
                 await fetch(WEB_APP_URL, {
                     method: 'POST',
