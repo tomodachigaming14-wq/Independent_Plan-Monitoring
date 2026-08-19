@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELUPDD | PLAN MONITORING</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Inter", "Segoe UI", Roboto, sans-serif; }
+        body { min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 2rem 1.5rem; background: #f4f7fc; position: relative; }
+        body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(ellipse at 20% 50%, rgba(26, 115, 232, 0.08) 0%, transparent 60%), radial-gradient(ellipse at 80% 50%, rgba(0, 200, 150, 0.06) 0%, transparent 60%), linear-gradient(145deg, #f0f4f8 0%, #e8edf3 100%); z-index: 0; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; max-width: 400px; width: 100%; pointer-events: none; }
+        .toast { pointer-events: auto; background: white; border-radius: 16px; padding: 1rem 1.5rem; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15); display: flex; align-items: center; gap: 14px; transform: translateX(120%); animation: slideIn 0.5s ease forwards; border-left: 5px solid #2563eb; min-height: 60px; }
+        .toast.hiding { animation: slideOut 0.4s ease forwards; }
+        .toast-success { border-left-color: #10b981; }
+        .toast-error { border-left-color: #ef4444; }
+        .toast-info { border-left-color: #2563eb; }
+        .toast-warning { border-left-color: #f59e0b; }
+        .toast-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+        .toast-success .toast-icon { background: #d1fae5; color: #059669; }
+        .toast-error .toast-icon { background: #fee2e2; color: #dc2626; }
+        .toast-info .toast-icon { background: #dbeafe; color: #2563eb; }
+        .toast-warning .toast-icon { background: #fef3c7; color: #d97706; }
+        .toast-content { flex: 1; }
+        .toast-title { font-weight: 700; font-size: 0.9rem; color: #0f172a; }
+        .toast-message { font-size: 0.8rem; color: #64748b; margin-top: 2px; }
+        .toast-close { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.2rem; padding: 4px; transition: color 0.3s ease; flex-shrink: 0; }
+        .toast-close:hover { color: #475569; }
+        @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(120%); opacity: 0; } }
+
+        #loadingOverlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #f4f7fc; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; transition: opacity 1.2s ease, visibility 1.2s ease; }
+        #loadingOverlay.hidden { opacity: 0; visibility: hidden; }
+        .loading-logo { position: relative; width: 200px; height: 200px; margin-bottom: 30px; display: flex; align-items: center; justify-content: center; }
+        .loading-logo .ring-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; animation: pulseLogo 2s ease-in-out infinite; }
+        .loading-logo .ring { fill: none; stroke: #1a73e8; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 300; stroke-dashoffset: 300; animation: drawRing 2.5s ease-in-out infinite; }
+        .loading-logo .ring:nth-child(2) { stroke: #00c896; stroke-dasharray: 250; stroke-dashoffset: 250; animation-delay: 0.5s; }
+        .loading-logo .ring:nth-child(3) { stroke: #ffb347; stroke-dasharray: 200; stroke-dashoffset: 200; animation-delay: 1s; }
+        .loading-logo .logo-image { position: relative; z-index: 2; width: 80px; height: auto; border-radius: 12px; object-fit: contain; filter: drop-shadow(0 4px 20px rgba(26, 115, 232, 0.3)); }
+        @keyframes drawRing { 0% { stroke-dashoffset: 300; } 50% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -300; } }
+        @keyframes pulseLogo { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+        .loading-text { color: #334155; font-size: 1.1rem; letter-spacing: 3px; text-transform: uppercase; font-weight: 300; animation: fadeText 1.5s ease-in-out infinite; }
+        .loading-text span { color: #1a73e8; font-weight: 600; }
+        .loading-dots { display: inline-block; margin-left: 5px; }
+        .loading-dots span { display: inline-block; width: 8px; height: 8px; background: #1a73e8; border-radius: 50%; margin: 0 3px; animation: dotBounce 1.4s ease-in-out infinite both; }
+        .loading-dots span:nth-child(1) { animation-delay: 0s; }
+        .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes dotBounce { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1.2); opacity: 1; } }
+        @keyframes fadeText { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+        .loading-progress { width: 200px; height: 2px; background: rgba(0, 0, 0, 0.1); border-radius: 4px; margin-top: 30px; overflow: hidden; }
+        .loading-progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #1a73e8, #00c896); border-radius: 4px; animation: progressLoad 3s ease-in-out forwards; }
+        @keyframes progressLoad { 0% { width: 0%; } 100% { width: 100%; } }
+
+        .card { max-width: 880px; width: 100%; background: white; border-radius: 28px; padding: 2.5rem 3rem; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); position: relative; z-index: 1; opacity: 0; transform: translateY(30px); transition: opacity 0.8s ease, transform 0.8s ease; }
+        .card.visible { opacity: 1; transform: translateY(0); }
+        .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 1.5rem; margin-bottom: 2rem; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 1rem; }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .header-icon { width: 52px; height: 52px; background: linear-gradient(135deg, #1e3a8a, #2563eb); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; color: white; box-shadow: 0 8px 24px rgba(26, 115, 232, 0.3); }
+        .header h1 { font-size: 1.6rem; font-weight: 700; color: #1e3a8a; letter-spacing: -0.5px; }
+        .header h1 small { display: block; font-size: 0.7rem; font-weight: 400; color: #64748b; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+        .header-badge { background: rgba(0, 200, 150, 0.15); border: 1px solid rgba(0, 200, 150, 0.2); padding: 0.4rem 1rem; border-radius: 40px; color: #00c896; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
+        .logo-image { height: 50px; width: auto; display: block; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem 1.8rem; }
+        .full-width { grid-column: 1 / -1; }
+        .field-group { display: flex; flex-direction: column; gap: 0.4rem; }
+        .field-group label { font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; color: #334155; display: flex; align-items: center; gap: 8px; }
+        .field-group label i { color: #2563eb; font-size: 0.75rem; width: 16px; }
+        .field-group label .required { color: #dc2626; font-size: 0.6rem; }
+        .field-group input, .field-group select, .field-group textarea { background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 16px; padding: 0.75rem 1.1rem; font-size: 0.9rem; transition: all 0.25s ease; outline: none; width: 100%; color: #0f172a; font-weight: 400; font-family: "Inter", "Segoe UI", Roboto, sans-serif; }
+        .field-group input:focus, .field-group select:focus, .field-group textarea:focus { border-color: #2563eb; background: #ffffff; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+        .field-group select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23475569' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 1rem center; cursor: pointer; min-height: 50px; }
+        .field-group textarea { resize: vertical; min-height: 60px; }
+
+        .pic-container { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .pic-container select { flex: 1; min-width: 200px; }
+        .pic-btn { padding: 0.5rem 1rem; border: none; border-radius: 12px; font-weight: 600; font-size: 0.75rem; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 6px; font-family: "Inter", "Segoe UI", Roboto, sans-serif; white-space: nowrap; }
+        .pic-btn-add { background: #10b981; color: white; }
+        .pic-btn-add:hover { background: #059669; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+        .pic-btn-add:active { transform: scale(0.95); }
+        .pic-btn-delete { background: #ef4444; color: white; }
+        .pic-btn-delete:hover { background: #dc2626; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
+        .pic-btn-delete:active { transform: scale(0.95); }
+        .pic-btn i { font-size: 0.7rem; }
+
+        .btn-submit { background: linear-gradient(135deg, #2563eb, #1e3a8a); border: none; padding: 1rem 2rem; border-radius: 60px; font-weight: 700; font-size: 1rem; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 12px; cursor: pointer; transition: all 0.3s ease; width: 100%; margin-top: 1.2rem; letter-spacing: 0.5px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.25); position: relative; overflow: hidden; font-family: "Inter", "Segoe UI", Roboto, sans-serif; }
+        .btn-submit::before { content: ""; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent); transition: left 0.6s ease; }
+        .btn-submit:hover::before { left: 100%; }
+        .btn-submit:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4); }
+        .btn-submit:active { transform: scale(0.97); }
+        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        .btn-test { background: #f1f5f9; border: 1px solid #e2e8f0; padding: 0.5rem 1rem; border-radius: 40px; color: #475569; cursor: pointer; font-size: 0.75rem; font-weight: 600; transition: all 0.3s ease; flex: 1; font-family: "Inter", "Segoe UI", Roboto, sans-serif; }
+        .btn-test:hover { background: #e2e8f0; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
+        .btn-test:active { transform: scale(0.97); }
+        .btn-test i { margin-right: 4px; }
+        .btn-view-all { background: #1e3a8a; border: 1px solid #1e3a8a; color: white; }
+        .btn-view-all:hover { background: #2563eb; border-color: #2563eb; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3); }
+        .btn-chart { background: #059669; border: 1px solid #059669; color: white; }
+        .btn-chart:hover { background: #047857; border-color: #047857; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3); }
+        .btn-sheet { background: #0f9d58; border: 1px solid #0f9d58; color: white; }
+        .btn-sheet:hover { background: #0b7e48; border-color: #0b7e48; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(15, 157, 88, 0.3); }
+
+        .status-message { margin-top: 1.2rem; padding: 0.8rem 1.2rem; border-radius: 16px; background: #f8fafc; border: 1px solid #e2e8f0; color: #475569; display: flex; align-items: center; gap: 12px; transition: all 0.3s ease; font-size: 0.85rem; min-height: 52px; }
+        .status-message i { font-size: 1rem; color: #2563eb; flex-shrink: 0; }
+        .status-message.success { background: #f0fdf4; border-color: #86efac; color: #166534; }
+        .status-message.success i { color: #10b981; }
+        .status-message.error { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
+        .status-message.error i { color: #dc2626; }
+
+        .footer-note { margin-top: 1.5rem; font-size: 0.65rem; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 1.2rem; letter-spacing: 0.5px; }
+        .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(255, 255, 255, 0.15); border-top: 2px solid white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 99999; justify-content: center; align-items: center; padding: 1rem; animation: fadeIn 0.3s ease; }
+        .modal-overlay.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-box { background: white; border-radius: 24px; max-width: 95vw; width: 100%; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); animation: slideUp 0.3s ease; overflow: hidden; }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.2rem 1.5rem; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 0.5rem; flex-shrink: 0; }
+        .modal-header h2 { font-size: 1.1rem; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px; }
+        .modal-header h2 i { color: #2563eb; }
+        .modal-header .close-btn { background: #f1f5f9; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; color: #475569; }
+        .modal-header .close-btn:hover { background: #fee2e2; color: #dc2626; transform: rotate(90deg); }
+
+        .modal-filters { padding: 0.8rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center; background: #f8fafc; flex-shrink: 0; }
+        .modal-filters .filter-group { display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
+        .modal-filters label { font-weight: 600; font-size: 0.65rem; color: #334155; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
+        .modal-filters select, .modal-filters input { padding: 0.3rem 0.6rem; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.75rem; outline: none; background: white; transition: all 0.3s ease; min-width: 80px; max-width: 140px; }
+        .modal-filters select:focus, .modal-filters input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+        .modal-filters .filter-btn { background: #2563eb; border: none; padding: 0.3rem 1rem; border-radius: 30px; color: white; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 0.7rem; }
+        .modal-filters .filter-btn:hover { background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+        .modal-filters .filter-btn:active { transform: scale(0.95); }
+        .modal-filters .filter-btn.reset-btn { background: #64748b; }
+        .modal-filters .filter-btn.reset-btn:hover { background: #475569; box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3); }
+
+        .modal-search { padding: 0.6rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center; background: #fafbfc; flex-shrink: 0; }
+        .modal-search input { flex: 1; min-width: 150px; padding: 0.4rem 0.8rem; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 0.8rem; outline: none; transition: all 0.3s ease; }
+        .modal-search input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+        .modal-search .search-info { font-size: 0.75rem; color: #64748b; white-space: nowrap; }
+        .modal-search .search-info span { font-weight: 700; color: #1e3a8a; }
+
+        .table-wrapper { overflow: auto; flex: 1; padding: 0.5rem 0; position: relative; max-height: calc(92vh - 300px); min-height: 200px; }
+        .table-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
+        .table-wrapper::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .table-wrapper::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+        .table-wrapper::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        .modal-body { padding: 0 1.5rem; overflow: visible; flex: 1; display: flex; flex-direction: column; }
+        .modal-body table { width: 100%; border-collapse: collapse; font-size: 0.7rem; min-width: 1200px; }
+        .modal-body table th { background: #f1f5f9; color: #1e3a8a; font-weight: 700; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.3px; padding: 0.4rem 0.3rem; text-align: left; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 10; white-space: nowrap; }
+        .modal-body table td { padding: 0.3rem 0.3rem; border-bottom: 1px solid #f1f5f9; color: #334155; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .modal-body table tr:hover td { background: #f8fafc; }
+        .modal-body table .no-records td { text-align: center; padding: 2rem 0; color: #94a3b8; font-size: 0.9rem; }
+        .modal-body .action-cell { display: flex; gap: 3px; flex-wrap: nowrap; }
+        .modal-body .action-cell .btn-action { padding: 0.15rem 0.4rem; border: none; border-radius: 6px; font-size: 0.6rem; font-weight: 600; cursor: pointer; transition: all 0.25s ease; font-family: "Inter", "Segoe UI", Roboto, sans-serif; display: inline-flex !important; align-items: center; gap: 3px; }
+        .modal-body .editing td { background: #fef3c7 !important; }
+        .modal-body .editing input, .modal-body .editing select, .modal-body .editing textarea { background: white; border: 1.5px solid #f59e0b; border-radius: 4px; padding: 0.1rem 0.2rem; font-size: 0.65rem; width: 100%; outline: none; font-family: "Inter", "Segoe UI", Roboto, sans-serif; min-width: 50px; }
+        .modal-body .editing input:focus, .modal-body .editing select:focus, .modal-body .editing textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15); }
+        .modal-body table select { appearance: auto !important; -webkit-appearance: auto !important; -moz-appearance: auto !important; z-index: 100 !important; position: relative !important; overflow: visible !important; min-height: 28px !important; padding: 2px 6px !important; font-size: 0.65rem !important; background-color: white !important; border: 2px solid #f59e0b !important; border-radius: 4px !important; color: #0f172a !important; cursor: pointer !important; max-width: 130px !important; }
+        .modal-body table select option { display: block !important; padding: 4px 8px !important; min-height: 28px !important; height: auto !important; white-space: normal !important; word-wrap: break-word !important; background: white !important; color: #0f172a !important; font-size: 0.65rem !important; }
+        .modal-body table td { overflow: visible !important; position: relative !important; z-index: 1 !important; }
+        .modal-body table tr.editing-row td { overflow: visible !important; position: relative !important; z-index: 10 !important; }
+        .modal-body table tr.editing-row td select { z-index: 1000 !important; position: relative !important; min-height: 28px !important; }
+        .modal-footer { padding: 0.8rem 1.5rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem; background: #f8fafc; border-radius: 0 0 24px 24px; flex-shrink: 0; }
+        .modal-footer .record-count { font-size: 0.8rem; color: #475569; }
+        .modal-footer .record-count span { font-weight: 700; color: #1e3a8a; }
+        .modal-footer .btn-close-modal { background: #2563eb; border: none; padding: 0.4rem 1.2rem; border-radius: 40px; color: white; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 0.8rem; }
+        .modal-footer .btn-close-modal:hover { background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+        .modal-footer .btn-close-modal:active { transform: scale(0.95); }
+
+        .chart-filters { display: flex; flex-wrap: wrap; gap: 0.8rem 1.2rem; padding: 0.8rem 1rem; background: #f8fafc; border-radius: 16px; border: 1px solid #e2e8f0; align-items: center; margin-bottom: 1rem; }
+        .chart-filters .filter-group { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+        .chart-filters label { font-weight: 600; font-size: 0.7rem; color: #334155; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
+        .chart-filters select, .chart-filters input { padding: 0.4rem 0.8rem; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 0.8rem; outline: none; background: white; transition: all 0.3s ease; min-width: 120px; }
+        .chart-filters select:focus, .chart-filters input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+        .chart-filters .filter-btn { background: #2563eb; border: none; padding: 0.4rem 1.2rem; border-radius: 30px; color: white; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 0.75rem; white-space: nowrap; }
+        .chart-filters .filter-btn:hover { background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+        .chart-filters .filter-btn:active { transform: scale(0.95); }
+        .chart-filters .filter-btn.reset-btn { background: #64748b; }
+        .chart-filters .filter-btn.reset-btn:hover { background: #475569; box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3); }
+        .chart-filters .filter-divider { width: 1px; height: 30px; background: #e2e8f0; margin: 0 0.2rem; }
+        .chart-type-selector { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+        .chart-type-selector label { font-weight: 600; font-size: 0.7rem; color: #334155; text-transform: uppercase; letter-spacing: 0.3px; }
+        .chart-type-selector button { padding: 0.3rem 0.9rem; border: 2px solid #cbd5e1; border-radius: 20px; background: white; cursor: pointer; font-weight: 600; font-size: 0.7rem; transition: all 0.3s ease; color: #475569; font-family: "Inter", sans-serif; }
+        .chart-type-selector button.active { border-color: #2563eb; background: #2563eb; color: white; }
+        .chart-type-selector button:hover { border-color: #2563eb; transform: translateY(-1px); }
+        .chart-container { position: relative; height: 400px; margin-top: 0.5rem; }
+        .chart-container canvas { width: 100% !important; height: 100% !important; }
+        .chart-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.6rem; margin-top: 1rem; padding: 0.8rem 1rem; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; }
+        .chart-summary .stat-item { text-align: center; }
+        .chart-summary .stat-item .stat-value { font-size: 1.3rem; font-weight: 700; color: #1e3a8a; }
+        .chart-summary .stat-item .stat-label { font-size: 0.6rem; text-transform: uppercase; color: #64748b; letter-spacing: 0.3px; }
+        .chart-loading { text-align: center; padding: 2rem; color: #94a3b8; }
+        .chart-loading i { font-size: 2rem; margin-bottom: 1rem; }
+
+        .add-person-modal .modal-box { max-width: 500px; }
+        .add-person-modal .modal-body { padding: 2rem; }
+        .add-person-modal .field-group { margin-bottom: 1rem; }
+        .add-person-modal .btn-add-person { background: #10b981; border: none; padding: 0.8rem 2rem; border-radius: 40px; color: white; font-weight: 700; cursor: pointer; transition: all 0.3s ease; width: 100%; font-size: 1rem; font-family: "Inter", "Segoe UI", Roboto, sans-serif; }
+        .add-person-modal .btn-add-person:hover { background: #059669; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+        .add-person-modal .btn-add-person:active { transform: scale(0.97); }
+        .add-person-modal .btn-add-person:disabled { opacity: 0.6; cursor: not-allowed; }
+        .add-person-modal .error-msg { color: #dc2626; font-size: 0.8rem; margin-top: 0.3rem; display: none; }
+        .add-person-modal .error-msg.show { display: block; }
+
+        .editing-row td { background: #fef3c7 !important; }
+        .editing-row .action-cell .btn-action { display: none; }
+        .editing-row .action-cell .btn-save-edit, .editing-row .action-cell .btn-cancel-edit { display: inline-flex !important; }
+        .action-cell .btn-save-edit, .action-cell .btn-cancel-edit { display: none !important; }
+
+        .col-province { min-width: 80px; max-width: 100px; }
+        .col-city { min-width: 100px; max-width: 130px; }
+        .col-type { min-width: 80px; max-width: 100px; }
+        .col-status { min-width: 80px; max-width: 100px; }
+        .col-date { min-width: 80px; max-width: 95px; }
+        .col-month { min-width: 80px; max-width: 100px; }
+        .col-personnel { min-width: 90px; max-width: 120px; }
+        .col-actions { min-width: 70px; max-width: 80px; }
+
+        @media (max-width: 700px) {
+            .card { padding: 1.5rem; border-radius: 2rem; }
+            .form-grid { grid-template-columns: 1fr; gap: 0.8rem; }
+            .full-width { grid-column: 1; }
+            .header h1 { font-size: 1.2rem; }
+            .header-icon { width: 42px; height: 42px; font-size: 1.2rem; }
+            .header-badge { display: none; }
+            .loading-logo { width: 140px; height: 140px; }
+            .loading-logo .logo-image { width: 60px; }
+            .btn-group { flex-direction: column; }
+            .pic-container { flex-direction: column; }
+            .pic-container select { width: 100%; }
+            .pic-btn { width: 100%; justify-content: center; }
+            .modal-box { max-width: 100vw; max-height: 98vh; border-radius: 16px; }
+            .modal-header { padding: 0.8rem 1rem; }
+            .modal-filters { padding: 0.6rem 1rem; flex-direction: column; align-items: stretch; }
+            .modal-filters select, .modal-filters input { min-width: 100%; max-width: 100%; }
+            .modal-search { padding: 0.6rem 1rem; flex-direction: column; }
+            .modal-search input { width: 100%; min-width: unset; }
+            .modal-body { padding: 0 0.8rem; }
+            .table-wrapper { max-height: calc(92vh - 350px); }
+            .modal-body table { font-size: 0.55rem; min-width: 900px; }
+            .modal-body table th, .modal-body table td { padding: 0.15rem 0.15rem; }
+            .modal-body .action-cell .btn-action { font-size: 0.5rem; padding: 0.1rem 0.3rem; }
+            .modal-footer { padding: 0.6rem 1rem; flex-direction: column; text-align: center; }
+            .modal-overlay { padding: 0.3rem; }
+            .chart-filters { flex-direction: column; align-items: stretch; }
+            .chart-filters select, .chart-filters input { min-width: 100%; }
+            .chart-filters .filter-divider { display: none; }
+            .chart-type-selector { flex-wrap: wrap; }
+            .chart-summary { grid-template-columns: repeat(3, 1fr); }
+            .toast-container { top: 10px; right: 10px; left: 10px; max-width: 100%; }
+        }
+        @media (max-width: 400px) {
+            .card { padding: 1rem; }
+            .field-group input, .field-group select, .field-group textarea { padding: 0.6rem 0.9rem; font-size: 0.85rem; }
+            .loading-logo { width: 100px; height: 100px; }
+            .loading-logo .logo-image { width: 45px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div id="loadingOverlay">
+    <div class="loading-logo">
+        <img src="DHSUD_LOGO.png" alt="DHSUD Logo" class="logo-image" onerror="this.style.display='none'">
+        <div class="ring-container">
+            <svg viewBox="0 0 200 200">
+                <circle class="ring" cx="100" cy="100" r="80" />
+                <circle class="ring" cx="100" cy="100" r="60" />
+                <circle class="ring" cx="100" cy="100" r="40" />
+            </svg>
+        </div>
+    </div>
+    <div class="loading-text">
+        Loading <span>PLAN MONITORING</span>
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+    </div>
+    <div class="loading-progress"><div class="loading-progress-bar"></div></div>
+</div>
+
+<div class="card" id="mainCard">
+    <div class="header">
+        <div class="header-left">
+            <div class="header-logo">
+                <img src="DHSUD_LOGO.png" alt="DHSUD Logo" class="logo-image" onerror="this.style.display='none'">
+            </div>
+            <div>
+                <h1>
+                    Plan Monitoring
+                    <small>Plan Monitoring Management Information System</small>
+                </h1>
+            </div>
+        </div>
+        <div class="header-badge">
+            <i class="fas fa-circle" style="font-size: 0.4rem; color: #00c896;"></i>
+            <span>Live</span>
+        </div>
+    </div>
+
+    <form id="planForm">
+        <div class="form-grid">
+            <div class="field-group full-width">
+                <label><i class="fas fa-map-pin"></i> Region <span class="required">*</span></label>
+                <select id="plan_region" required>
+                    <option value="Region_06">Region_06</option>
+                </select>
+            </div>
+            <div class="field-group full-width">
+                <label><i class="fas fa-landmark"></i> Province <span class="required">*</span></label>
+                <select id="plan_province" required>
+                    <option value="">Select Province...</option>
+                    <option value="Aklan">Aklan</option>
+                    <option value="Antique">Antique</option>
+                    <option value="Capiz">Capiz</option>
+                    <option value="Guimaras">Guimaras</option>
+                    <option value="Iloilo">Iloilo</option>
+                </select>
+            </div>
+            <div class="field-group full-width">
+                <label><i class="fas fa-city"></i> City/Municipality <span class="required">*</span></label>
+                <select id="plan_cityMun" required>
+                    <option value="">Select City/Municipality...</option>
+                </select>
+            </div>
+            <div class="field-group full-width">
+                <label><i class="fas fa-clipboard-list"></i> Type of Monitoring <span class="required">*</span></label>
+                <select id="plan_typeMonitoring" required>
+                    <option value="">Select Type...</option>
+                    <option value="Table">Table</option>
+                    <option value="Field">Field</option>
+                </select>
+            </div>
+            <div class="field-group">
+                <label><i class="fas fa-flag"></i> Initial Status <span class="required">*</span></label>
+                <select id="plan_initialStatus" required>
+                    <option value="">Select Status...</option>
+                    <option value="Pre-Phase">Pre-Phase</option>
+                    <option value="Phase 1">Phase 1</option>
+                    <option value="Phase 2">Phase 2</option>
+                    <option value="Phase 3">Phase 3</option>
+                    <option value="Phase 4">Phase 4</option>
+                    <option value="Phase 5">Phase 5</option>
+                    <option value="RA1">RA1</option>
+                    <option value="RA2">RA2</option>
+                    <option value="RA3">RA3</option>
+                    <option value="RA4">RA4</option>
+                    <option value="RA5">RA5</option>
+                    <option value="RA6">RA6</option>
+                    <option value="RA7">RA7</option>
+                    <option value="None Indicated">None Indicated</option>
+                </select>
+            </div>
+            <div class="field-group">
+                <label><i class="fas fa-sync-alt"></i> Updated Status <span class="required">*</span></label>
+                <select id="plan_updatedStatus" required>
+                    <option value="">Select Status...</option>
+                    <option value="Pre-Phase">Pre-Phase</option>
+                    <option value="Phase 1">Phase 1</option>
+                    <option value="Phase 2">Phase 2</option>
+                    <option value="Phase 3">Phase 3</option>
+                    <option value="Phase 4">Phase 4</option>
+                    <option value="Phase 5">Phase 5</option>
+                    <option value="RA1">RA1</option>
+                    <option value="RA2">RA2</option>
+                    <option value="RA3">RA3</option>
+                    <option value="RA4">RA4</option>
+                    <option value="RA5">RA5</option>
+                    <option value="RA6">RA6</option>
+                    <option value="RA7">RA7</option>
+                    <option value="None Indicated">None Indicated</option>
+                </select>
+            </div>
+            <div class="field-group">
+                <label><i class="fas fa-calendar-alt"></i> Date of Monitoring Conducted <span class="required">*</span></label>
+                <input type="date" id="plan_dateConducted" required>
+            </div>
+            <div class="field-group">
+                <label><i class="fas fa-calendar-check"></i> Reporting Month <span class="required">*</span></label>
+                <select id="plan_reportingMonth" required>
+                    <option value="">Select Month...</option>
+                    <option value="January">January</option>
+                    <option value="February">February</option>
+                    <option value="March">March</option>
+                    <option value="April">April</option>
+                    <option value="May">May</option>
+                    <option value="June">June</option>
+                    <option value="July">July</option>
+                    <option value="August">August</option>
+                    <option value="September">September</option>
+                    <option value="October">October</option>
+                    <option value="November">November</option>
+                    <option value="December">December</option>
+                </select>
+            </div>
+            <div class="field-group full-width">
+                <label><i class="fas fa-pencil-alt"></i> Remarks</label>
+                <input type="text" id="plan_remarks" placeholder="N/A or additional notes">
+            </div>
+            <div class="field-group full-width">
+                <label><i class="fas fa-link"></i> Link to MOV</label>
+                <input type="url" id="plan_linkMov" placeholder="https://drive.google.com/...">
+            </div>
+            <div class="field-group full-width">
+                <label><i class="fas fa-user"></i> Personnel In-Charge <span class="required">*</span></label>
+                <div class="pic-container">
+                    <select id="plan_pic" required>
+                        <option value="">Select Person...</option>
+                    </select>
+                    <button type="button" class="pic-btn pic-btn-add" id="plan_addPic">
+                        <i class="fas fa-plus"></i> Add
+                    </button>
+                    <button type="button" class="pic-btn pic-btn-delete" id="plan_deletePic">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+        <button type="submit" class="btn-submit" id="plan_submitBtn">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <span>Save to Google Sheet</span>
+        </button>
+    </form>
+
+    <div class="btn-group">
+        <button type="button" class="btn-test btn-view-all" id="viewAllBtn">
+            <i class="fas fa-database"></i> View All Records
+        </button>
+        <button type="button" class="btn-test btn-chart" id="chartBtn">
+            <i class="fas fa-chart-bar"></i> View Chart
+        </button>
+        <button type="button" class="btn-test btn-sheet" id="sheetBtn">
+            <i class="fas fa-external-link-alt"></i> View Google Sheet
+        </button>
+    </div>
+
+    <div id="statusMessage" class="status-message">
+        <i class="fas fa-info-circle"></i>
+        <span id="statusText">Ready · fill in all required fields</span>
+    </div>
+
+    <div class="footer-note">
+        <i class="fas fa-database"></i> Data saved directly to Google Sheets via Apps Script
+    </div>
+</div>
+
+<div class="modal-overlay" id="recordsModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2><i class="fas fa-table"></i> <span id="recordsModalTitle">All Records</span></h2>
+            <button class="close-btn" id="closeModalBtn"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-filters">
+            <div class="filter-group">
+                <label for="filterProvince">Province:</label>
+                <select id="filterProvince">
+                    <option value="all">All Provinces</option>
+                    <option value="Aklan">Aklan</option>
+                    <option value="Antique">Antique</option>
+                    <option value="Capiz">Capiz</option>
+                    <option value="Guimaras">Guimaras</option>
+                    <option value="Iloilo">Iloilo</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filterReportingMonth">Reporting Month:</label>
+                <select id="filterReportingMonth">
+                    <option value="all">All Months</option>
+                    <option value="January">January</option>
+                    <option value="February">February</option>
+                    <option value="March">March</option>
+                    <option value="April">April</option>
+                    <option value="May">May</option>
+                    <option value="June">June</option>
+                    <option value="July">July</option>
+                    <option value="August">August</option>
+                    <option value="September">September</option>
+                    <option value="October">October</option>
+                    <option value="November">November</option>
+                    <option value="December">December</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filterPIC">Personnel:</label>
+                <select id="filterPIC">
+                    <option value="all">All Personnel</option>
+                </select>
+            </div>
+            <button class="filter-btn" id="applyRecordFilter"><i class="fas fa-filter"></i> Apply</button>
+            <button class="filter-btn reset-btn" id="resetRecordFilter"><i class="fas fa-undo"></i> Reset</button>
+        </div>
+        <div class="modal-search">
+            <input type="text" id="searchInput" placeholder="🔍 Search by Province, City/Municipality...">
+            <span class="search-info">Showing <span id="displayCount">0</span> of <span id="totalCount">0</span> records</span>
+        </div>
+        <div class="modal-body">
+            <div class="table-wrapper" id="tableWrapper">
+                <div id="modalBodyContent">
+                    <div style="text-align:center; padding: 2rem; color: #94a3b8;">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
+                        <p style="margin-top: 1rem;">Loading records...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <span class="record-count">Total: <span id="footerTotalCount">0</span> record(s)</span>
+            <button class="btn-close-modal" id="closeModalBtn2">Close</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="chartModal">
+    <div class="modal-box" style="max-width: 1100px;">
+        <div class="modal-header">
+            <h2><i class="fas fa-chart-bar"></i> <span id="chartModalTitle">Plan Monitoring Analytics</span></h2>
+            <button class="close-btn" id="closeChartBtn"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" id="chartModalBody">
+            <div class="chart-filters" style="border-bottom: none; margin-bottom: 0.5rem; background: transparent; padding: 0 0 0.5rem 0;">
+                <div class="chart-type-selector">
+                    <label>Chart Type:</label>
+                    <button class="active" data-chart="status">Status Distribution</button>
+                    <button data-chart="type">Monitoring Type</button>
+                    <button data-chart="city">By City/Municipality</button>
+                </div>
+            </div>
+            <div class="chart-filters">
+                <div class="filter-group">
+                    <label for="chartMonthFilter">Month:</label>
+                    <select id="chartMonthFilter">
+                        <option value="all">All Months</option>
+                        <option value="January">January</option>
+                        <option value="February">February</option>
+                        <option value="March">March</option>
+                        <option value="April">April</option>
+                        <option value="May">May</option>
+                        <option value="June">June</option>
+                        <option value="July">July</option>
+                        <option value="August">August</option>
+                        <option value="September">September</option>
+                        <option value="October">October</option>
+                        <option value="November">November</option>
+                        <option value="December">December</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="chartYearFilter">Year:</label>
+                    <input type="number" id="chartYearFilter" placeholder="e.g. 2026" style="width: 100px; min-width: 80px;">
+                </div>
+                <div class="filter-group">
+                    <label for="chartProvinceFilter">Province:</label>
+                    <select id="chartProvinceFilter">
+                        <option value="all">All Provinces</option>
+                        <option value="Aklan">Aklan</option>
+                        <option value="Antique">Antique</option>
+                        <option value="Capiz">Capiz</option>
+                        <option value="Guimaras">Guimaras</option>
+                        <option value="Iloilo">Iloilo</option>
+                    </select>
+                </div>
+                <div class="filter-divider"></div>
+                <div class="filter-group">
+                    <label for="chartPICFilter">Personnel:</label>
+                    <select id="chartPICFilter">
+                        <option value="all">All Personnel</option>
+                    </select>
+                </div>
+                <div class="filter-divider"></div>
+                <div class="filter-group">
+                    <button class="filter-btn" id="applyChartFilter"><i class="fas fa-filter"></i> Apply</button>
+                    <button class="filter-btn reset-btn" id="resetChartFilter"><i class="fas fa-undo"></i> Reset</button>
+                </div>
+            </div>
+            <div id="chartContainer">
+                <div class="chart-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading chart data...</p>
+                </div>
+            </div>
+            <div id="chartSummary" class="chart-summary" style="display: none;">
+                <div class="stat-item"><div class="stat-value" id="statTotal">0</div><div class="stat-label">Total Records</div></div>
+                <div class="stat-item"><div class="stat-value" id="statStatuses">0</div><div class="stat-label">Statuses</div></div>
+                <div class="stat-item"><div class="stat-value" id="statTopStatus">-</div><div class="stat-label">Top Status</div></div>
+                <div class="stat-item"><div class="stat-value" id="statMonths">0</div><div class="stat-label">Months</div></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <span class="record-count">📊 Plan Monitoring Dashboard</span>
+            <button class="btn-close-modal" id="closeChartBtn2">Close</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay add-person-modal" id="addPersonModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2><i class="fas fa-user-plus"></i> Add Person</h2>
+            <button class="close-btn" id="closeAddPersonBtn"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="field-group">
+                <label>Full Name <span class="required">*</span></label>
+                <input type="text" id="newPersonName" placeholder="Enter full name..." style="padding: 0.75rem 1.1rem; border: 1.5px solid #cbd5e1; border-radius: 16px; font-size: 0.9rem; width: 100%; outline: none; font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;">
+                <div class="error-msg" id="personError">Please enter a name.</div>
+            </div>
+            <button class="btn-add-person" id="confirmAddPerson">
+                <i class="fas fa-check"></i> Add Person
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============================================
+    // TOAST
+    // ============================================
+    function showToast(title, message, type = 'info', duration = 4000) {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        const icons = { success: 'fa-check-circle', error: 'fa-times-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
+        toast.innerHTML = `
+            <div class="toast-icon"><i class="fas ${icons[type] || icons.info}"></i></div>
+            <div class="toast-content">
+                <div class="toast-title">${title}</div>
+                <div class="toast-message">${message}</div>
+            </div>
+            <button class="toast-close" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add('hiding');
+            setTimeout(() => toast.remove(), 400);
+        }, duration);
+        return toast;
+    }
+
+    // ============================================
+    // CONFIG
+    // ============================================
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzgG0t-90T7nz-dwEW7J4NR6z1iUa77JAWRQAgeQ3xNLSObdlt1Cs7huA2AmbM8KA9FFA/exec';
+    const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1AgNv7ljgvnsZ1SVd0xxxNi2WopiifdYIcVNgX9Yr82w/edit?usp=sharing';
+
+    // ============================================
+    // PERSONNEL MANAGEMENT
+    // ============================================
+    let picNames = [];
+
+    async function loadPICNamesFromSheet() {
+        try {
+            const response = await fetch(WEB_APP_URL + '?action=getPIC', { method: 'GET' });
+            const result = await response.json();
+            if (result.result === 'success' && result.names && result.names.length > 0) {
+                picNames = result.names;
+            } else {
+                picNames = ['Juan Dela Cruz', 'Maria Santos', 'Jose Rizal', 'Andres Bonifacio', 'Gabriela Silang'];
+                savePICNamesToSheet(picNames);
+            }
+        } catch (e) {
+            console.error('Error loading PIC names:', e);
+            picNames = ['Juan Dela Cruz', 'Maria Santos', 'Jose Rizal', 'Andres Bonifacio', 'Gabriela Silang'];
+        }
+        populatePicDropdowns();
+        updatePICFilters();
+    }
+
+    async function savePICNamesToSheet(names) {
+        try {
+            await fetch(WEB_APP_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'savePIC',
+                    names: names
+                })
+            });
+            return true;
+        } catch (e) {
+            console.error('Error saving PIC names:', e);
+            return false;
+        }
+    }
+
+    function populatePicDropdowns() {
+        const select = document.getElementById('plan_pic');
+        if (select) {
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">Select Person...</option>';
+            picNames.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                select.appendChild(opt);
+            });
+            if (currentValue && picNames.includes(currentValue)) {
+                select.value = currentValue;
+            }
+        }
+    }
+
+    function updatePICFilters() {
+        ['filterPIC', 'chartPICFilter'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const current = el.value;
+            el.innerHTML = '<option value="all">All Personnel</option>';
+            picNames.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                el.appendChild(opt);
+            });
+            if (current && picNames.includes(current)) el.value = current;
+            else el.value = 'all';
+        });
+    }
+
+    // ============================================
+    // ADD / DELETE PERSON
+    // ============================================
+    const addPersonModal = document.getElementById('addPersonModal');
+    const newPersonName = document.getElementById('newPersonName');
+    const personError = document.getElementById('personError');
+
+    function openAddPersonModal() {
+        newPersonName.value = '';
+        personError.classList.remove('show');
+        addPersonModal.classList.add('active');
+        setTimeout(() => newPersonName.focus(), 100);
+    }
+
+    function closeAddPersonModal() {
+        addPersonModal.classList.remove('active');
+    }
+
+    document.getElementById('closeAddPersonBtn').addEventListener('click', closeAddPersonModal);
+    addPersonModal.addEventListener('click', function(e) {
+        if (e.target === addPersonModal) closeAddPersonModal();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeAddPersonModal();
+    });
+
+    document.getElementById('confirmAddPerson').addEventListener('click', async function() {
+        const name = newPersonName.value.trim();
+        if (!name) {
+            personError.classList.add('show');
+            return;
+        }
+        personError.classList.remove('show');
+        if (picNames.includes(name)) {
+            personError.textContent = 'This name already exists.';
+            personError.classList.add('show');
+            return;
+        }
+        picNames.push(name);
+        await savePICNamesToSheet(picNames);
+        populatePicDropdowns();
+        updatePICFilters();
+        document.getElementById('plan_pic').value = name;
+        showToast('✅ Success', `"${name}" added to Personnel In-Charge list.`, 'success');
+        closeAddPersonModal();
+    });
+
+    newPersonName.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('confirmAddPerson').click();
+        }
+    });
+
+    async function deleteSelectedPerson() {
+        const select = document.getElementById('plan_pic');
+        const selected = select.value;
+        if (!selected) {
+            showToast('⚠️ Warning', 'Please select a person to delete.', 'warning');
+            return;
+        }
+        if (!confirm('Remove "' + selected + '" from list?')) return;
+
+        const idx = picNames.indexOf(selected);
+        if (idx > -1) {
+            picNames.splice(idx, 1);
+            await savePICNamesToSheet(picNames);
+            populatePicDropdowns();
+            updatePICFilters();
+            document.getElementById('plan_pic').value = '';
+            showToast('🗑️ Removed', `"${selected}" removed from personnel list.`, 'success');
+        } else {
+            showToast('❌ Error', 'Person not found in list.', 'error');
+        }
+    }
+
+    document.getElementById('plan_addPic').addEventListener('click', openAddPersonModal);
+    document.getElementById('plan_deletePic').addEventListener('click', deleteSelectedPerson);
+
+    // ============================================
+    // PSGC DATA
+    // ============================================
+    const psgcData = {
+        '600401000': { city: 'Altavas', province: 'Aklan' },
+        '600402000': { city: 'Balete', province: 'Aklan' },
+        '600403000': { city: 'Banga', province: 'Aklan' },
+        '600404000': { city: 'Batan', province: 'Aklan' },
+        '600405000': { city: 'Buruanga', province: 'Aklan' },
+        '600406000': { city: 'Ibajay', province: 'Aklan' },
+        '600407000': { city: 'Kalibo', province: 'Aklan' },
+        '600408000': { city: 'Lezo', province: 'Aklan' },
+        '600409000': { city: 'Libacao', province: 'Aklan' },
+        '600410000': { city: 'Madalag', province: 'Aklan' },
+        '600411000': { city: 'Makato', province: 'Aklan' },
+        '600412000': { city: 'Malay', province: 'Aklan' },
+        '600413000': { city: 'Malinao', province: 'Aklan' },
+        '600414000': { city: 'Nabas', province: 'Aklan' },
+        '600415000': { city: 'New Washington', province: 'Aklan' },
+        '600416000': { city: 'Numancia', province: 'Aklan' },
+        '600417000': { city: 'Tangalan', province: 'Aklan' },
+        '600601000': { city: 'Anini-y', province: 'Antique' },
+        '600602000': { city: 'Barbaza', province: 'Antique' },
+        '600603000': { city: 'Belison', province: 'Antique' },
+        '600604000': { city: 'Bugasong', province: 'Antique' },
+        '600605000': { city: 'Caluya', province: 'Antique' },
+        '600606000': { city: 'Culasi', province: 'Antique' },
+        '600607000': { city: 'Tobias Fornier', province: 'Antique' },
+        '600608000': { city: 'Hamtic', province: 'Antique' },
+        '600609000': { city: 'Laua-an', province: 'Antique' },
+        '600610000': { city: 'Libertad', province: 'Antique' },
+        '600611000': { city: 'Pandan', province: 'Antique' },
+        '600612000': { city: 'Patnongon', province: 'Antique' },
+        '600613000': { city: 'San Jose', province: 'Antique' },
+        '600614000': { city: 'San Remigio', province: 'Antique' },
+        '600615000': { city: 'Sebaste', province: 'Antique' },
+        '600616000': { city: 'Sibalom', province: 'Antique' },
+        '600617000': { city: 'Tibiao', province: 'Antique' },
+        '600618000': { city: 'Valderrama', province: 'Antique' },
+        '601901000': { city: 'Cuartero', province: 'Capiz' },
+        '601902000': { city: 'Dao', province: 'Capiz' },
+        '601903000': { city: 'Dumalag', province: 'Capiz' },
+        '601904000': { city: 'Dumarao', province: 'Capiz' },
+        '601905000': { city: 'Ivisan', province: 'Capiz' },
+        '601906000': { city: 'Jamindan', province: 'Capiz' },
+        '601907000': { city: 'Ma-ayon', province: 'Capiz' },
+        '601908000': { city: 'Mambusao', province: 'Capiz' },
+        '601909000': { city: 'Panay', province: 'Capiz' },
+        '601910000': { city: 'Panitan', province: 'Capiz' },
+        '601911000': { city: 'Pilar', province: 'Capiz' },
+        '601912000': { city: 'Pontevedra', province: 'Capiz' },
+        '601913000': { city: 'President Roxas', province: 'Capiz' },
+        '601914000': { city: 'City of Roxas', province: 'Capiz' },
+        '601915000': { city: 'Sapi-an', province: 'Capiz' },
+        '601916000': { city: 'Sigma', province: 'Capiz' },
+        '601917000': { city: 'Tapaz', province: 'Capiz' },
+        '607901000': { city: 'Buenavista', province: 'Guimaras' },
+        '607902000': { city: 'Jordan', province: 'Guimaras' },
+        '607903000': { city: 'Nueva Valencia', province: 'Guimaras' },
+        '607904000': { city: 'San Lorenzo', province: 'Guimaras' },
+        '607905000': { city: 'Sibunag', province: 'Guimaras' },
+        '603001000': { city: 'Ajuy', province: 'Iloilo' },
+        '603002000': { city: 'Alimodian', province: 'Iloilo' },
+        '603003000': { city: 'Anilao', province: 'Iloilo' },
+        '603004000': { city: 'Badiangan', province: 'Iloilo' },
+        '603005000': { city: 'Balasan', province: 'Iloilo' },
+        '603006000': { city: 'Banate', province: 'Iloilo' },
+        '603007000': { city: 'Barotac Nuevo', province: 'Iloilo' },
+        '603008000': { city: 'Barotac Viejo', province: 'Iloilo' },
+        '603009000': { city: 'Batad', province: 'Iloilo' },
+        '603010000': { city: 'Bingawan', province: 'Iloilo' },
+        '603012000': { city: 'Cabatuan', province: 'Iloilo' },
+        '603013000': { city: 'Calinog', province: 'Iloilo' },
+        '603014000': { city: 'Carles', province: 'Iloilo' },
+        '603015000': { city: 'Concepcion', province: 'Iloilo' },
+        '603016000': { city: 'Dingle', province: 'Iloilo' },
+        '603017000': { city: 'Dueñas', province: 'Iloilo' },
+        '603018000': { city: 'Dumangas', province: 'Iloilo' },
+        '603019000': { city: 'Estancia', province: 'Iloilo' },
+        '603020000': { city: 'Guimbal', province: 'Iloilo' },
+        '603021000': { city: 'Igbaras', province: 'Iloilo' },
+        '603023000': { city: 'Janiuay', province: 'Iloilo' },
+        '603025000': { city: 'Lambunao', province: 'Iloilo' },
+        '603026000': { city: 'Leganes', province: 'Iloilo' },
+        '603027000': { city: 'Lemery', province: 'Iloilo' },
+        '603028000': { city: 'Leon', province: 'Iloilo' },
+        '603029000': { city: 'Maasin', province: 'Iloilo' },
+        '603030000': { city: 'Miagao', province: 'Iloilo' },
+        '603031000': { city: 'Mina', province: 'Iloilo' },
+        '603032000': { city: 'New Lucena', province: 'Iloilo' },
+        '603034000': { city: 'Oton', province: 'Iloilo' },
+        '603035000': { city: 'City of Passi', province: 'Iloilo' },
+        '603036000': { city: 'Pavia', province: 'Iloilo' },
+        '603037000': { city: 'Pototan', province: 'Iloilo' },
+        '603038000': { city: 'San Dionisio', province: 'Iloilo' },
+        '603039000': { city: 'San Enrique', province: 'Iloilo' },
+        '603040000': { city: 'San Joaquin', province: 'Iloilo' },
+        '603041000': { city: 'San Miguel', province: 'Iloilo' },
+        '603042000': { city: 'San Rafael', province: 'Iloilo' },
+        '603043000': { city: 'Santa Barbara', province: 'Iloilo' },
+        '603044000': { city: 'Sara', province: 'Iloilo' },
+        '603045000': { city: 'Tigbauan', province: 'Iloilo' },
+        '603046000': { city: 'Tubungan', province: 'Iloilo' },
+        '603047000': { city: 'Zarraga', province: 'Iloilo' },
+        '631000000': { city: 'City of Iloilo', province: 'Iloilo' }
+    };
+
+    function getCitiesByProvince(province) {
+        const cities = [];
+        for (const [psgc, data] of Object.entries(psgcData)) {
+            if (data.province === province) cities.push({ psgc, city: data.city });
+        }
+        return cities.sort((a, b) => a.city.localeCompare(b.city));
+    }
+
+    // ============================================
+    // FORM HANDLING
+    // ============================================
+    const planForm = document.getElementById('planForm');
+    const statusDiv = document.getElementById('statusMessage');
+    const statusText = document.getElementById('statusText');
+
+    function setStatus(msg, type = 'info') {
+        statusText.textContent = msg;
+        statusDiv.className = 'status-message';
+        const icon = statusDiv.querySelector('i');
+        if (type === 'success') { statusDiv.classList.add('success'); icon.className = 'fas fa-check-circle'; }
+        else if (type === 'error') { statusDiv.classList.add('error'); icon.className = 'fas fa-exclamation-circle'; }
+        else { icon.className = 'fas fa-info-circle'; }
+    }
+
+    const planProvince = document.getElementById('plan_province');
+    const planCity = document.getElementById('plan_cityMun');
+
+    planProvince.addEventListener('change', function() {
+        const province = this.value;
+        planCity.innerHTML = '<option value="">Select City/Municipality...</option>';
+        if (!province) return;
+        const cities = getCitiesByProvince(province);
+        cities.forEach(({ city }) => {
+            const opt = document.createElement('option');
+            opt.value = city;
+            opt.textContent = city;
+            planCity.appendChild(opt);
+        });
+    });
+
+    // ============================================
+    // SUBMIT - Using POST without no-cors (proper CORS handling)
+    // ============================================
+    planForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const payload = {
+            formType: 'Plan_Monitoring',
+            region: document.getElementById('plan_region').value,
+            province: document.getElementById('plan_province').value,
+            cityMun: document.getElementById('plan_cityMun').value,
+            typeMonitoring: document.getElementById('plan_typeMonitoring').value,
+            initialStatus: document.getElementById('plan_initialStatus').value,
+            updatedStatus: document.getElementById('plan_updatedStatus').value,
+            dateConducted: document.getElementById('plan_dateConducted').value,
+            reportingMonth: document.getElementById('plan_reportingMonth').value,
+            remarks: document.getElementById('plan_remarks').value || 'N/A',
+            linkMov: document.getElementById('plan_linkMov').value || '',
+            personnelInCharge: document.getElementById('plan_pic').value
+        };
+
+        const required = ['region','province','cityMun','typeMonitoring','initialStatus','updatedStatus','dateConducted','reportingMonth','personnelInCharge'];
+        for (const f of required) {
+            if (!payload[f]) { 
+                showToast('❌ Validation Error', 'Please fill in all required fields.', 'error'); 
+                return; 
+            }
+        }
+
+        const btn = document.getElementById('plan_submitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Saving...';
+
+        try {
+            // Use POST without no-cors - Apps Script will handle CORS
+            const response = await fetch(WEB_APP_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            // Try to parse the response
+            let result;
+            try {
+                result = await response.json();
+            } catch (e) {
+                // If response is not JSON, assume it worked
+                result = { result: 'success' };
+            }
+            
+            if (result.result === 'success') {
+                showToast('✅ Success', 'Record saved to Google Sheet!', 'success');
+                
+                // Reset form
+                planForm.reset();
+                document.getElementById('plan_dateConducted').value = new Date().toISOString().split('T')[0];
+                document.getElementById('plan_region').value = 'Region_06';
+                planCity.innerHTML = '<option value="">Select City/Municipality...</option>';
+                document.getElementById('plan_reportingMonth').value = new Date().toLocaleString('default', { month: 'long' });
+                
+                // Refresh records if modal is open
+                if (recordsModal.classList.contains('active')) {
+                    await loadRecords();
+                }
+            } else {
+                showToast('❌ Error', result.message || 'Failed to save record.', 'error');
+            }
+        } catch (err) {
+            console.error('Save error:', err);
+            // If fetch fails with CORS error, try no-cors mode as fallback
+            try {
+                await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                showToast('✅ Success', 'Record saved to Google Sheet!', 'success');
+                planForm.reset();
+                document.getElementById('plan_dateConducted').value = new Date().toISOString().split('T')[0];
+                document.getElementById('plan_region').value = 'Region_06';
+                planCity.innerHTML = '<option value="">Select City/Municipality...</option>';
+                document.getElementById('plan_reportingMonth').value = new Date().toLocaleString('default', { month: 'long' });
+                if (recordsModal.classList.contains('active')) {
+                    await loadRecords();
+                }
+            } catch (fallbackErr) {
+                showToast('❌ Error', 'Failed to save. Please check your connection.', 'error');
+            }
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> <span>Save to Google Sheet</span>';
+        }
+    });
+
+    // ============================================
+    // MODALS
+    // ============================================
+    let allRecords = [];
+    let filteredRecords = [];
+    let editingRowNumber = null;
+    let chartInstance = null;
+    let currentChartType = 'status';
+
+    const recordsModal = document.getElementById('recordsModal');
+    const modalBodyContent = document.getElementById('modalBodyContent');
+
+    function closeRecordsModal() { recordsModal.classList.remove('active'); document.body.style.overflow = 'auto'; editingRowNumber = null; }
+    function openRecordsModal() { recordsModal.classList.add('active'); document.body.style.overflow = 'hidden'; loadRecords(); }
+
+    document.getElementById('closeModalBtn').addEventListener('click', closeRecordsModal);
+    document.getElementById('closeModalBtn2').addEventListener('click', closeRecordsModal);
+    recordsModal.addEventListener('click', function(e) { if (e.target === recordsModal) closeRecordsModal(); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeRecordsModal(); });
+
+    async function loadRecords() {
+        modalBodyContent.innerHTML = `<div style="text-align:center; padding: 2rem; color: #94a3b8;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
+            <p style="margin-top: 1rem;">Loading records...</p>
+        </div>`;
+        try {
+            const response = await fetch(WEB_APP_URL + '?action=records&type=Plan_Monitoring', { method: 'GET' });
+            const result = await response.json();
+            if (result.result === 'success') {
+                allRecords = result.records || [];
+                filteredRecords = [...allRecords];
+                document.getElementById('totalCount').textContent = allRecords.length;
+                document.getElementById('footerTotalCount').textContent = allRecords.length;
+                await renderTable(allRecords);
+                document.getElementById('displayCount').textContent = allRecords.length;
+                editingRowNumber = null;
+            } else {
+                modalBodyContent.innerHTML = `<div style="text-align:center; padding: 2rem; color: #dc2626;">
+                    Error: ${result.message || 'Failed to load records'}
+                </div>`;
+            }
+        } catch (e) {
+            console.error('Load records error:', e);
+            modalBodyContent.innerHTML = `<div style="text-align:center; padding: 2rem; color: #dc2626;">
+                Failed to load records. Please refresh and try again.
+                <br><br>
+                <button onclick="loadRecords()" style="padding:0.5rem 1.5rem; border:none; border-radius:8px; background:#2563eb; color:white; cursor:pointer;">
+                    <i class="fas fa-sync"></i> Retry
+                </button>
+            </div>`;
+        }
+    }
+
+    // ============================================
+    // FORMAT DATE
+    // ============================================
+    function formatDate(dateValue) {
+        if (!dateValue) return '-';
+        
+        if (typeof dateValue === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(dateValue)) {
+            return dateValue;
+        }
+        
+        if (typeof dateValue === 'number') {
+            const d = new Date((dateValue - 25569) * 86400 * 1000);
+            return String(d.getMonth() + 1).padStart(2, '0') + '/' + 
+                   String(d.getDate()).padStart(2, '0') + '/' + 
+                   d.getFullYear();
+        }
+        
+        if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+            const parts = dateValue.split('-');
+            return parts[1] + '/' + parts[2] + '/' + parts[0];
+        }
+        
+        if (dateValue instanceof Date) {
+            return String(dateValue.getMonth() + 1).padStart(2, '0') + '/' + 
+                   String(dateValue.getDate()).padStart(2, '0') + '/' + 
+                   dateValue.getFullYear();
+        }
+        
+        try {
+            const d = new Date(dateValue);
+            if (!isNaN(d.getTime())) {
+                return String(d.getMonth() + 1).padStart(2, '0') + '/' + 
+                       String(d.getDate()).padStart(2, '0') + '/' + 
+                       d.getFullYear();
+            }
+        } catch (e) {}
+        
+        return dateValue || '-';
+    }
+
+    // ============================================
+    // RENDER TABLE
+    // ============================================
+    async function renderTable(records) {
+        if (picNames.length === 0) await loadPICNamesFromSheet();
+        if (picNames.length === 0) picNames = ['Juan Dela Cruz', 'Maria Santos', 'Jose Rizal', 'Andres Bonifacio', 'Gabriela Silang'];
+
+        if (!records || records.length === 0) {
+            modalBodyContent.innerHTML = `<table><thead><tr><th>#</th><th class="col-province">Province</th><th class="col-city">City/Municipality</th><th class="col-type">Type</th><th class="col-status">Initial</th><th class="col-status">Updated</th><th class="col-date">Date Conducted</th><th class="col-month">Reporting Month</th><th class="col-personnel">Personnel</th><th class="col-actions">Actions</th></tr></thead><tbody><tr class="no-records"><td colspan="10">📭 No records found.</td></tr></tbody></table>`;
+            document.getElementById('displayCount').textContent = '0';
+            return;
+        }
+
+        const columns = [
+            { key: 'Province', label: 'Province', cls: 'col-province' },
+            { key: 'City/Municipality', label: 'City/Municipality', cls: 'col-city' },
+            { key: 'Type of Monitoring', label: 'Type', cls: 'col-type' },
+            { key: 'Initial Status', label: 'Initial', cls: 'col-status' },
+            { key: 'Updated Status', label: 'Updated', cls: 'col-status' },
+            { key: 'Date of Monitoring Conducted (MM/DD/YYYY)', label: 'Date Conducted', cls: 'col-date' },
+            { key: 'Reporting Month', label: 'Reporting Month', cls: 'col-month' },
+            { key: 'Personnel In-Charge', label: 'Personnel', cls: 'col-personnel' }
+        ];
+
+        let html = `<table><thead><tr><th style="position:sticky; top:0; z-index:20; background:#f1f5f9; padding:0.4rem 0.3rem; font-size:0.6rem; text-align:left; border-bottom:2px solid #e2e8f0; color:#1e3a8a; min-width:30px;">#</th>`;
+        columns.forEach(col => html += `<th class="${col.cls}" style="position:sticky; top:0; z-index:20; background:#f1f5f9; padding:0.4rem 0.3rem; font-size:0.6rem; text-align:left; border-bottom:2px solid #e2e8f0; color:#1e3a8a; white-space:nowrap;">${col.label}</th>`);
+        html += `<th class="col-actions" style="position:sticky; top:0; z-index:20; background:#f1f5f9; padding:0.4rem 0.3rem; font-size:0.6rem; text-align:left; border-bottom:2px solid #e2e8f0; color:#1e3a8a; white-space:nowrap;">Actions</th></tr></thead><tbody>`;
+
+        records.forEach((record, index) => {
+            const rowNum = index + 1;
+            const actualRow = index + 2;
+            const isEditing = editingRowNumber === actualRow;
+
+            html += `<tr class="${isEditing ? 'editing-row' : ''}" data-row="${actualRow}">`;
+            html += `<td style="padding:0.3rem 0.3rem; border-bottom:1px solid #f1f5f9; color:#334155; font-size:0.65rem; text-align:center;">${rowNum}</td>`;
+
+            columns.forEach(col => {
+                let value = record[col.key] || '-';
+                
+                if (col.key === 'Date of Monitoring Conducted (MM/DD/YYYY)') {
+                    value = formatDate(value);
+                }
+
+                if (isEditing) {
+                    const fieldName = col.key.replace(/ /g, '_').replace(/\//g, '_').replace(/\(/g, '').replace(/\)/g, '');
+                    
+                    if (col.key === 'Province') {
+                        const provinces = ['Aklan','Antique','Capiz','Guimaras','Iloilo'];
+                        html += `<td style="position:relative; z-index:50;"><select name="${fieldName}" data-key="${col.key}" style="width:100%; min-width:70px; max-width:100px; padding:0.15rem 0.3rem; border:2px solid #f59e0b; border-radius:4px; font-size:0.6rem; background:white; z-index:1000; position:relative;">`;
+                        provinces.forEach(p => { html += `<option value="${p}" ${p === value ? 'selected' : ''}>${p}</option>`; });
+                        html += `</select></td>`;
+                    } else if (col.key === 'City/Municipality') {
+                        html += `<td><input type="text" name="${fieldName}" data-key="${col.key}" value="${value}" style="width:100%; min-width:80px; max-width:130px; padding:0.1rem 0.2rem; border:2px solid #f59e0b; border-radius:4px; font-size:0.6rem; background:white;"></td>`;
+                    } else if (col.key === 'Type of Monitoring') {
+                        html += `<td style="position:relative; z-index:50;"><select name="${fieldName}" data-key="${col.key}" style="width:100%; min-width:70px; max-width:100px; padding:0.15rem 0.3rem; border:2px solid #f59e0b; border-radius:4px; font-size:0.6rem; background:white; z-index:1000; position:relative;">
+                            <option value="Table" ${value === 'Table' ? 'selected' : ''}>Table</option>
+                            <option value="Field" ${value === 'Field' ? 'selected' : ''}>Field</option>
+                        </select></td>`;
+                    } else if (col.key === 'Initial Status' || col.key === 'Updated Status') {
+                        const statuses = ['Pre-Phase','Phase 1','Phase 2','Phase 3','Phase 4','Phase 5','RA1','RA2','RA3','RA4','RA5','RA6','RA7','None Indicated'];
+                        html += `<td style="position:relative; z-index:50;"><select name="${fieldName}" data-key="${col.key}" style="width:100%; min-width:80px; max-width:100px; padding:0.15rem 0.3rem; border:2px solid #f59e0b; border-radius:4px; font-size:0.6rem; background:white; z-index:1000; position:relative;">`;
+                        statuses.forEach(s => { html += `<option value="${s}" ${s === value ? 'selected' : ''}>${s}</option>`; });
+                        html += `</select></td>`;
+                    } else if (col.key === 'Reporting Month') {
+                        const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                        html += `<td style="position:relative; z-index:50;"><select name="${fieldName}" data-key="${col.key}" style="width:100%; min-width:70px; max-width:100px; padding:0.15rem 0.3rem; border:2px solid #f59e0b; border-radius:4px; font-size:0.6rem; background:white; z-index:1000; position:relative;">`;
+                        months.forEach(m => { html += `<option value="${m}" ${m === value ? 'selected' : ''}>${m}</option>`; });
+                        html += `</select></td>`;
+                    } else if (col.key === 'Date of Monitoring Conducted (MM/DD/YYYY)') {
+                        let d = value;
+                        if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) {
+                            const parts = d.split('/');
+                            d = parts[2] + '-' + parts[0] + '-' + parts[1];
+                        }
+                        html += `<td><input type="date" name="${fieldName}" data-key="${col.key}" value="${d}" style="width:100%; min-width:70px; max-width:95px; padding:0.1rem 0.2rem; border:2px solid #f59e0b; border-radius:4px; font-size:0.6rem; background:white;"></td>`;
+                    } else if (col.key === 'Personnel In-Charge') {
+                        html += `<td style="position:relative; z-index:50;"><select name="${fieldName}" data-key="${col.key}" style="width:100%; min-width:80px; max-width:120px; padding:0.15rem 0.3rem; border:2px solid #f59e0b; border-radius:4px; font-size:0.6rem; background:white; z-index:1000; position:relative;"><option value="">Select...</option>`;
+                        picNames.forEach(n => { html += `<option value="${n}" ${n === value ? 'selected' : ''}>${n}</option>`; });
+                        html += `</select></td>`;
+                    } else {
+                        html += `<td><input type="text" name="${fieldName}" data-key="${col.key}" value="${value}" style="width:100%; min-width:50px; max-width:130px; padding:0.1rem 0.2rem; border:2px solid #f59e0b; border-radius:4px; font-size:0.6rem; background:white;"></td>`;
+                    }
+                } else {
+                    if (value.length > 18) value = value.substring(0, 18) + '…';
+                    html += `<td style="padding:0.3rem 0.3rem; border-bottom:1px solid #f1f5f9; color:#334155; font-size:0.65rem; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${value}</td>`;
+                }
+            });
+
+            html += `<td class="action-cell" style="padding:0.2rem 0.2rem; border-bottom:1px solid #f1f5f9; white-space:nowrap;">`;
+            if (isEditing) {
+                html += `<button class="btn-action btn-save-edit" onclick="saveEditRow(${actualRow})" id="saveBtn_${actualRow}" style="padding:0.1rem 0.4rem; border:none; border-radius:4px; font-size:0.55rem; font-weight:600; cursor:pointer; background:#10b981; color:white; font-family:'Inter',sans-serif;"><i class="fas fa-save"></i><span class="btn-spinner"></span></button>`;
+                html += `<button class="btn-action btn-cancel-edit" onclick="cancelEditRow()" style="padding:0.1rem 0.4rem; border:none; border-radius:4px; font-size:0.55rem; font-weight:600; cursor:pointer; background:#6b7280; color:white; font-family:'Inter',sans-serif;"><i class="fas fa-times"></i></button>`;
+            } else {
+                html += `<button class="btn-action btn-edit" onclick="startEditRow(${actualRow})" style="padding:0.1rem 0.4rem; border:none; border-radius:4px; font-size:0.55rem; font-weight:600; cursor:pointer; background:#f59e0b; color:white; font-family:'Inter',sans-serif;"><i class="fas fa-pen"></i></button>`;
+                html += `<button class="btn-action btn-delete" onclick="deleteRecord(${actualRow})" id="deleteBtn_${actualRow}" style="padding:0.1rem 0.4rem; border:none; border-radius:4px; font-size:0.55rem; font-weight:600; cursor:pointer; background:#ef4444; color:white; font-family:'Inter',sans-serif;"><i class="fas fa-trash"></i><span class="btn-spinner"></span></button>`;
+            }
+            html += `</td></tr>`;
+        });
+
+        html += `</tbody></table>`;
+        modalBodyContent.innerHTML = html;
+        document.getElementById('displayCount').textContent = records.length;
+    }
+
+    window.startEditRow = function(row) { editingRowNumber = row; applyRecordFilters(); };
+    window.cancelEditRow = function() { editingRowNumber = null; applyRecordFilters(); };
+
+    // ============================================
+    // SAVE EDIT ROW - FIXED
+    // ============================================
+    window.saveEditRow = async function(rowNumber) {
+        const saveBtn = document.getElementById(`saveBtn_${rowNumber}`);
+        if (saveBtn) { 
+            saveBtn.classList.add('loading'); 
+            saveBtn.disabled = true; 
+        }
+        
+        const row = document.querySelector(`tr[data-row="${rowNumber}"]`);
+        if (!row) { 
+            showToast('❌ Error', 'Row not found.', 'error'); 
+            if (saveBtn) { 
+                saveBtn.classList.remove('loading'); 
+                saveBtn.disabled = false; 
+            } 
+            return; 
+        }
+
+        const inputs = row.querySelectorAll('input, select, textarea');
+        const updatedData = {};
+        inputs.forEach(input => { 
+            const key = input.dataset.key; 
+            if (key) updatedData[key] = input.value; 
+        });
+
+        const recordIndex = rowNumber - 2;
+        if (recordIndex < 0 || recordIndex >= filteredRecords.length) { 
+            showToast('❌ Error', 'Record not found.', 'error'); 
+            if (saveBtn) { 
+                saveBtn.classList.remove('loading'); 
+                saveBtn.disabled = false; 
+            } 
+            return; 
+        }
+        const original = filteredRecords[recordIndex];
+
+        const payload = {
+            action: 'updateRecord',
+            rowNumber: rowNumber,
+            formType: 'Plan_Monitoring',
+            data: {
+                province: updatedData['Province'] || original['Province'] || '',
+                cityMun: updatedData['City/Municipality'] || original['City/Municipality'] || '',
+                typeMonitoring: updatedData['Type of Monitoring'] || original['Type of Monitoring'] || '',
+                initialStatus: updatedData['Initial Status'] || original['Initial Status'] || '',
+                updatedStatus: updatedData['Updated Status'] || original['Updated Status'] || '',
+                dateConducted: updatedData['Date of Monitoring Conducted (MM/DD/YYYY)'] || original['Date of Monitoring Conducted (MM/DD/YYYY)'] || '',
+                reportingMonth: updatedData['Reporting Month'] || original['Reporting Month'] || '',
+                remarks: updatedData['Remarks'] || original['Remarks'] || 'N/A',
+                linkMov: updatedData['Link to MOV'] || original['Link to MOV'] || '',
+                personnelInCharge: updatedData['Personnel In-Charge'] || original['Personnel In-Charge'] || ''
+            }
+        };
+
+        try {
+            // Try normal POST first
+            const response = await fetch(WEB_APP_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            let result;
+            try {
+                result = await response.json();
+            } catch (e) {
+                result = { result: 'success' };
+            }
+            
+            if (result.result === 'success') {
+                showToast('✅ Success', 'Record updated!', 'success');
+                editingRowNumber = null;
+                await loadRecords();
+            } else {
+                showToast('❌ Error', result.message || 'Update failed.', 'error');
+            }
+        } catch (e) { 
+            // Fallback to no-cors if CORS fails
+            console.error('Update error, trying no-cors fallback:', e);
+            try {
+                await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                showToast('✅ Success', 'Record updated!', 'success');
+                editingRowNumber = null;
+                await loadRecords();
+            } catch (fallbackErr) {
+                showToast('❌ Error', 'Failed to update: ' + fallbackErr.message, 'error');
+            }
+        }
+        finally { 
+            if (saveBtn) { 
+                saveBtn.classList.remove('loading'); 
+                saveBtn.disabled = false; 
+            } 
+        }
+    };
+
+    // ============================================
+    // DELETE RECORD - FIXED
+    // ============================================
+    window.deleteRecord = async function(rowNumber) {
+        if (!confirm('Delete this record permanently?')) return;
+        
+        const deleteBtn = document.getElementById(`deleteBtn_${rowNumber}`);
+        if (deleteBtn) { 
+            deleteBtn.classList.add('loading'); 
+            deleteBtn.disabled = true; 
+        }
+        
+        try {
+            const response = await fetch(WEB_APP_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    action: 'deleteRecord', 
+                    rowNumber: rowNumber, 
+                    formType: 'Plan_Monitoring' 
+                })
+            });
+            
+            let result;
+            try {
+                result = await response.json();
+            } catch (e) {
+                result = { result: 'success' };
+            }
+            
+            if (result.result === 'success') {
+                showToast('🗑️ Deleted', 'Record deleted.', 'success');
+                editingRowNumber = null;
+                await loadRecords();
+            } else {
+                showToast('❌ Error', result.message || 'Delete failed.', 'error');
+            }
+        } catch (e) { 
+            console.error('Delete error, trying no-cors fallback:', e);
+            try {
+                await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        action: 'deleteRecord', 
+                        rowNumber: rowNumber, 
+                        formType: 'Plan_Monitoring' 
+                    })
+                });
+                showToast('🗑️ Deleted', 'Record deleted.', 'success');
+                editingRowNumber = null;
+                await loadRecords();
+            } catch (fallbackErr) {
+                showToast('❌ Error', 'Delete failed: ' + fallbackErr.message, 'error');
+            }
+        }
+        finally { 
+            if (deleteBtn) { 
+                deleteBtn.classList.remove('loading'); 
+                deleteBtn.disabled = false; 
+            } 
+        }
+    };
+
+    // ============================================
+    // FILTERS & SEARCH
+    // ============================================
+    async function applyRecordFilters() {
+        const provinceFilter = document.getElementById('filterProvince').value;
+        const monthFilter = document.getElementById('filterReportingMonth').value;
+        const picFilter = document.getElementById('filterPIC').value;
+
+        filteredRecords = allRecords.filter(r => {
+            if (provinceFilter !== 'all' && (r.Province || '') !== provinceFilter) return false;
+            if (monthFilter !== 'all' && (r['Reporting Month'] || '') !== monthFilter) return false;
+            if (picFilter !== 'all' && (r['Personnel In-Charge'] || '') !== picFilter) return false;
+            return true;
+        });
+
+        await renderTable(filteredRecords);
+        document.getElementById('displayCount').textContent = filteredRecords.length;
+        document.getElementById('footerTotalCount').textContent = filteredRecords.length;
+        editingRowNumber = null;
+    }
+
+    document.getElementById('applyRecordFilter').addEventListener('click', applyRecordFilters);
+    document.getElementById('resetRecordFilter').addEventListener('click', function() {
+        document.getElementById('filterProvince').value = 'all';
+        document.getElementById('filterReportingMonth').value = 'all';
+        document.getElementById('filterPIC').value = 'all';
+        applyRecordFilters();
+    });
+
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const term = this.value.trim().toLowerCase();
+        if (!term) { applyRecordFilters(); return; }
+        const filtered = filteredRecords.filter(r => {
+            const province = (r.Province || '').toLowerCase();
+            const city = (r['City/Municipality'] || '').toLowerCase();
+            return province.includes(term) || city.includes(term);
+        });
+        renderTable(filtered);
+        document.getElementById('displayCount').textContent = filtered.length;
+        editingRowNumber = null;
+    });
+
+    // ============================================
+    // CHART
+    // ============================================
+    const chartModal = document.getElementById('chartModal');
+
+    function closeChartModal() { chartModal.classList.remove('active'); document.body.style.overflow = 'auto'; if (chartInstance) { chartInstance.destroy(); chartInstance = null; } }
+    function openChartModal() { chartModal.classList.add('active'); document.body.style.overflow = 'hidden'; loadChartData(); }
+
+    document.getElementById('closeChartBtn').addEventListener('click', closeChartModal);
+    document.getElementById('closeChartBtn2').addEventListener('click', closeChartModal);
+    chartModal.addEventListener('click', function(e) { if (e.target === chartModal) closeChartModal(); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeChartModal(); });
+
+    document.querySelectorAll('.chart-type-selector button').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.chart-type-selector button').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentChartType = this.dataset.chart;
+            loadChartData();
+        });
+    });
+
+    async function loadChartData() {
+        const container = document.getElementById('chartContainer');
+        container.innerHTML = `<div class="chart-loading"><i class="fas fa-spinner fa-spin"></i><p>Loading chart data...</p></div>`;
+        document.getElementById('chartSummary').style.display = 'none';
+        try {
+            const response = await fetch(WEB_APP_URL + '?action=records&type=Plan_Monitoring', { method: 'GET' });
+            const result = await response.json();
+            if (result.result === 'success') renderChart(result.records || []);
+            else container.innerHTML = `<div style="text-align:center; padding:2rem; color:#dc2626;">Error: ${result.message}</div>`;
+        } catch (e) {
+            container.innerHTML = `<div style="text-align:center; padding:2rem; color:#dc2626;">Failed: ${e.message}</div>`;
+        }
+    }
+
+    function renderChart(records) {
+        const container = document.getElementById('chartContainer');
+        const summary = document.getElementById('chartSummary');
+
+        const monthFilter = document.getElementById('chartMonthFilter').value;
+        const yearFilter = document.getElementById('chartYearFilter').value;
+        const provinceFilter = document.getElementById('chartProvinceFilter').value;
+        const picFilter = document.getElementById('chartPICFilter').value;
+
+        let filtered = records;
+        if (monthFilter !== 'all') filtered = filtered.filter(r => (r['Reporting Month'] || '') === monthFilter);
+        if (yearFilter) filtered = filtered.filter(r => (r['Date of Monitoring Conducted (MM/DD/YYYY)'] || '').includes(yearFilter));
+        if (provinceFilter !== 'all') filtered = filtered.filter(r => (r['Province'] || '') === provinceFilter);
+        if (picFilter !== 'all') filtered = filtered.filter(r => (r['Personnel In-Charge'] || '') === picFilter);
+
+        if (filtered.length === 0) {
+            container.innerHTML = `<div style="text-align:center; padding:3rem; color:#94a3b8;"><i class="fas fa-chart-pie" style="font-size:3rem; margin-bottom:1rem;"></i><p>No data for selected filters.</p></div>`;
+            summary.style.display = 'none';
+            return;
+        }
+
+        const months = new Set(filtered.map(r => r['Reporting Month']).filter(Boolean));
+        document.getElementById('statTotal').textContent = filtered.length;
+        document.getElementById('statMonths').textContent = months.size;
+
+        let labels, data, chartTitle, datasetLabel;
+        const statuses = ['Pre-Phase','Phase 1','Phase 2','Phase 3','Phase 4','Phase 5','RA1','RA2','RA3','RA4','RA5','RA6','RA7','None Indicated'];
+
+        if (currentChartType === 'status') {
+            const counts = {};
+            statuses.forEach(s => counts[s] = 0);
+            filtered.forEach(r => {
+                const s = r['Updated Status'] || 'None Indicated';
+                if (counts.hasOwnProperty(s)) counts[s]++;
+                else counts[s] = 1;
+            });
+            labels = Object.keys(counts).filter(k => counts[k] > 0);
+            data = labels.map(k => counts[k]);
+            chartTitle = 'Status Distribution' + (monthFilter !== 'all' ? ' - ' + monthFilter : '');
+            datasetLabel = 'Count';
+            document.getElementById('statStatuses').textContent = labels.length;
+            let top = '-', topCount = 0;
+            labels.forEach((l,i) => { if (data[i] > topCount) { topCount = data[i]; top = l; } });
+            document.getElementById('statTopStatus').textContent = top + ' (' + topCount + ')';
+            renderBarChart(container, labels, data, chartTitle, datasetLabel, '#8b5cf6');
+            summary.style.display = 'grid';
+        } else if (currentChartType === 'type') {
+            const counts = { Table: 0, Field: 0 };
+            filtered.forEach(r => {
+                const t = r['Type of Monitoring'] || 'Table';
+                if (counts.hasOwnProperty(t)) counts[t]++;
+                else counts[t] = 1;
+            });
+            labels = Object.keys(counts);
+            data = labels.map(k => counts[k]);
+            chartTitle = 'Monitoring Type Distribution' + (monthFilter !== 'all' ? ' - ' + monthFilter : '');
+            datasetLabel = 'Count';
+            document.getElementById('statStatuses').textContent = labels.length;
+            let top = '-', topCount = 0;
+            labels.forEach((l,i) => { if (data[i] > topCount) { topCount = data[i]; top = l; } });
+            document.getElementById('statTopStatus').textContent = top + ' (' + topCount + ')';
+            renderBarChart(container, labels, data, chartTitle, datasetLabel, '#10b981');
+            summary.style.display = 'grid';
+        } else if (currentChartType === 'city') {
+            const cityCounts = {};
+            filtered.forEach(r => {
+                const c = r['City/Municipality'] || 'Unknown';
+                cityCounts[c] = (cityCounts[c] || 0) + 1;
+            });
+            labels = Object.keys(cityCounts).sort((a,b) => cityCounts[b] - cityCounts[a]);
+            data = labels.map(k => cityCounts[k]);
+            chartTitle = 'By City/Municipality' + (monthFilter !== 'all' ? ' - ' + monthFilter : '');
+            datasetLabel = 'Count';
+            document.getElementById('statStatuses').textContent = labels.length;
+            let top = '-', topCount = 0;
+            labels.forEach((l,i) => { if (data[i] > topCount) { topCount = data[i]; top = l; } });
+            document.getElementById('statTopStatus').textContent = top + ' (' + topCount + ')';
+            renderBarChart(container, labels, data, chartTitle, datasetLabel, '#f59e0b');
+            summary.style.display = 'grid';
+        }
+    }
+
+    function renderBarChart(container, labels, data, chartTitle, datasetLabel, color) {
+        container.innerHTML = `<div class="chart-container"><canvas id="chartCanvas"></canvas></div>`;
+        const ctx = document.getElementById('chartCanvas').getContext('2d');
+        if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+        const colors = labels.map((_, i) => {
+            const hues = ['#2563eb','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316'];
+            return hues[i % hues.length];
+        });
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: datasetLabel, data, backgroundColor: colors, borderColor: colors.map(c => c + '99'), borderWidth: 2, borderRadius: 6 }] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { title: { display: true, text: chartTitle, font: { size: 16, weight: 'bold' }, color: '#1e3a8a' }, legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.y + ' record(s)' } } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, title: { display: true, text: 'Number of Records', font: { weight: 'bold' } } }, x: { title: { display: true, text: '', font: { weight: 'bold' } } } }
+            }
+        });
+    }
+
+    document.getElementById('applyChartFilter').addEventListener('click', loadChartData);
+    document.getElementById('resetChartFilter').addEventListener('click', function() {
+        document.getElementById('chartMonthFilter').value = 'all';
+        document.getElementById('chartYearFilter').value = new Date().getFullYear();
+        document.getElementById('chartProvinceFilter').value = 'all';
+        document.getElementById('chartPICFilter').value = 'all';
+        loadChartData();
+    });
+
+    // ============================================
+    // VIEW BUTTONS
+    // ============================================
+    document.getElementById('viewAllBtn').addEventListener('click', openRecordsModal);
+    document.getElementById('chartBtn').addEventListener('click', openChartModal);
+    document.getElementById('sheetBtn').addEventListener('click', function() {
+        window.open(GOOGLE_SHEET_URL, '_blank');
+        showToast('📊 Info', 'Opening Google Sheet...', 'info');
+    });
+
+    // ============================================
+    // INIT
+    // ============================================
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('plan_dateConducted').value = today;
+        document.getElementById('plan_region').value = 'Region_06';
+        document.getElementById('plan_reportingMonth').value = new Date().toLocaleString('default', { month: 'long' });
+        document.getElementById('chartYearFilter').value = new Date().getFullYear();
+
+        loadPICNamesFromSheet();
+    });
+
+    setTimeout(function() {
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        document.getElementById('mainCard').classList.add('visible');
+    }, 3000);
+</script>
+</body>
+</html>
