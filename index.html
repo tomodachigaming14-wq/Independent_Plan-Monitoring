@@ -1496,13 +1496,13 @@
                 document.getElementById('displayCount').textContent = allRecords.length;
                 editingRowNumber = null;
             } else {
-                modalBodyContent.innerHTML = `<div style="text-align:center; padding: 2rem; color: #dc2626;">
+                modalBodyContent.innerHTML = `<div style="text-align:center; padding: 2rem; color:#dc2626;">
                     Error: ${result.message || 'Failed to load records'}
                 </div>`;
             }
         } catch (e) {
             console.error('Load records error:', e);
-            modalBodyContent.innerHTML = `<div style="text-align:center; padding: 2rem; color: #dc2626;">
+            modalBodyContent.innerHTML = `<div style="text-align:center; padding: 2rem; color:#dc2626;">
                 Failed to load records. Please refresh and try again.
                 <br><br>
                 <button onclick="loadRecords()" style="padding:0.5rem 1.5rem; border:none; border-radius:8px; background:#2563eb; color:white; cursor:pointer;">
@@ -1578,7 +1578,6 @@
             const rowNum = index + 1;
             let actualSheetRow = -1;
             
-            // Find the actual sheet row by matching the record in allRecords
             for (let i = 0; i < allRecords.length; i++) {
                 const rec = allRecords[i];
                 if (rec['Province'] === record['Province'] && 
@@ -1706,7 +1705,6 @@
             if (key) updatedData[key] = input.value; 
         });
 
-        // Find the original record in allRecords using the row number
         let originalRecord = null;
         for (let i = 0; i < allRecords.length; i++) {
             if (i + 2 === rowNumber) {
@@ -1925,7 +1923,7 @@
     });
 
     // ============================================
-    // CHART FUNCTIONS
+    // CHART FUNCTIONS - UPDATED TO SHOW ALL STATUSES INCLUDING PRE-PHASE
     // ============================================
     const chartModal = document.getElementById('chartModal');
 
@@ -1986,16 +1984,22 @@
         document.getElementById('statMonths').textContent = months.size;
 
         let labels, data, chartTitle, datasetLabel;
+        // Define the correct order: Pre-Phase first, then Phase 1-5, then RA1-RA7, then None Indicated
         const statuses = ['Pre-Phase','Phase 1','Phase 2','Phase 3','Phase 4','Phase 5','RA1','RA2','RA3','RA4','RA5','RA6','RA7','None Indicated'];
 
         if (currentChartType === 'status') {
             const counts = {};
+            // Initialize all statuses with 0
             statuses.forEach(s => counts[s] = 0);
             filtered.forEach(r => {
-                const s = r['Updated Status'] || 'None Indicated';
+                // Use Updated Status first, fallback to Initial Status, then None Indicated
+                let s = r['Updated Status'] || r['Initial Status'] || 'None Indicated';
+                // Normalize: ensure exact match
+                if (s === 'Pre-phase') s = 'Pre-Phase';
                 if (counts.hasOwnProperty(s)) counts[s]++;
                 else counts[s] = 1;
             });
+            // Keep only statuses that appear in the data, but preserve the defined order
             labels = statuses.filter(k => counts[k] > 0);
             data = labels.map(k => counts[k]);
             chartTitle = 'Status Distribution' + (monthFilter !== 'all' ? ' - ' + monthFilter : '');
@@ -2047,7 +2051,7 @@
         const ctx = document.getElementById('chartCanvas').getContext('2d');
         if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
         const colors = labels.map((_, i) => {
-            const hues = ['#2563eb','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316'];
+            const hues = ['#2563eb','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316','#6366f1','#14b8a6','#f43f5e','#8b5cf6','#eab308','#94a3b8'];
             return hues[i % hues.length];
         });
         chartInstance = new Chart(ctx, {
@@ -2056,8 +2060,15 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { title: { display: true, text: chartTitle, font: { size: 16, weight: 'bold' }, color: '#1e3a8a' }, legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.y + ' record(s)' } } },
-                scales: { y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, title: { display: true, text: 'Number of Records', font: { weight: 'bold' } } }, x: { title: { display: true, text: '', font: { weight: 'bold' } } } }
+                plugins: { 
+                    title: { display: true, text: chartTitle, font: { size: 16, weight: 'bold' }, color: '#1e3a8a' }, 
+                    legend: { display: false }, 
+                    tooltip: { callbacks: { label: ctx => ctx.parsed.y + ' record(s)' } } 
+                },
+                scales: { 
+                    y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, title: { display: true, text: 'Number of Records', font: { weight: 'bold' } } }, 
+                    x: { title: { display: true, text: '', font: { weight: 'bold' } } } 
+                }
             }
         });
     }
