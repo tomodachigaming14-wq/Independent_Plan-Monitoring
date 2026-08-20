@@ -951,8 +951,8 @@
         }
     }
 
-    // ============================================
-// MONTHLY ACTIVITY TABLE - FIXED for Updates
+ // ============================================
+// MONTHLY ACTIVITY TABLE - FIXED for Deleted records
 // ============================================
 function renderMonthlyTable() {
     const tbody = document.getElementById('monthlyTableBody');
@@ -1038,6 +1038,7 @@ function renderMonthlyTable() {
             latestInfo = 'Added new record';
             infoBadgeClass = 'record-added';
         } else if (r.action === 'Deleted') {
+            // FOR DELETED: Always show "-" for both statuses
             initialStatus = '-';
             updatedStatus = '-';
             latestInfo = 'Record removed';
@@ -1045,32 +1046,24 @@ function renderMonthlyTable() {
         } else if (r.action === 'Updated') {
             if (r.details) {
                 // Parse the details to extract the NEW statuses (the ones after the arrow)
-                // First try to find "Initial Status: X → Y"
                 const initialMatch = r.details.match(/Initial\s*Status:\s*([^→]+)\s*→\s*([^,]+)/i);
                 if (initialMatch) {
-                    initialStatus = initialMatch[2].trim(); // This is the NEW initial status
+                    initialStatus = initialMatch[2].trim();
                 }
                 
-                // Then try to find "Updated Status: X → Y"
                 const updatedMatch = r.details.match(/Updated\s*Status:\s*([^→]+)\s*→\s*([^,]+)/i);
                 if (updatedMatch) {
-                    updatedStatus = updatedMatch[2].trim(); // This is the NEW updated status
+                    updatedStatus = updatedMatch[2].trim();
                 }
                 
                 // If no "Updated Status:" found, try the simple "Status: X → Y" pattern
                 if (!updatedMatch) {
                     const simpleMatch = r.details.match(/Status:\s*([^→]+)\s*→\s*([^,]+)/i);
                     if (simpleMatch) {
-                        // If we have both Initial and Updated in the same string, parse carefully
-                        if (r.details.includes('Initial Status:') && r.details.includes('Updated Status:')) {
-                            // Already handled above
-                        } else {
-                            // For simple "Status: X → Y", treat as updated status only
-                            if (!initialStatus || initialStatus === '-') {
-                                initialStatus = simpleMatch[1].trim();
-                            }
-                            updatedStatus = simpleMatch[2].trim();
+                        if (!initialStatus || initialStatus === '-') {
+                            initialStatus = simpleMatch[1].trim();
                         }
+                        updatedStatus = simpleMatch[2].trim();
                     }
                 }
                 
@@ -1084,7 +1077,6 @@ function renderMonthlyTable() {
                         }
                     });
                     if (foundStatuses.length >= 2) {
-                        // The last status is the newest
                         initialStatus = foundStatuses[foundStatuses.length - 2] || foundStatuses[0];
                         updatedStatus = foundStatuses[foundStatuses.length - 1];
                     } else if (foundStatuses.length === 1) {
@@ -1116,23 +1108,6 @@ function renderMonthlyTable() {
         } else {
             latestInfo = r.details || 'Activity performed';
             infoBadgeClass = 'record-updated';
-        }
-        
-        // If we still don't have statuses, try to extract from details
-        if ((initialStatus === '-' || !initialStatus) && r.details) {
-            const statuses = ['Pre-Phase','Phase 1','Phase 2','Phase 3','Phase 4','Phase 5','RA1','RA2','RA3','RA4','RA5','RA6','RA7','None Indicated'];
-            const found = [];
-            statuses.forEach(s => {
-                if (r.details.includes(s)) {
-                    found.push(s);
-                }
-            });
-            if (found.length >= 2) {
-                if (initialStatus === '-' || !initialStatus) initialStatus = found[found.length - 2];
-                if (updatedStatus === '-' || !updatedStatus) updatedStatus = found[found.length - 1];
-            } else if (found.length === 1) {
-                if (updatedStatus === '-' || !updatedStatus) updatedStatus = found[0];
-            }
         }
         
         return `<tr class="clickable-row" data-index="${idx}" onclick="showDetail(${idx})">
