@@ -137,15 +137,19 @@
         .monthly-activity-section .month-filters .filter-btn:hover { background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
         .monthly-activity-section .month-filters .filter-btn.reset-btn { background: #64748b; }
         .monthly-activity-section .month-filters .filter-btn.reset-btn:hover { background: #475569; box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3); }
-        .monthly-activity-section .monthly-table-wrapper { max-height: 250px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 12px; }
+        .monthly-activity-section .monthly-table-wrapper { max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 12px; }
         .monthly-activity-section .monthly-table-wrapper::-webkit-scrollbar { width: 6px; }
         .monthly-activity-section .monthly-table-wrapper::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
         .monthly-activity-section .monthly-table-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .monthly-activity-section table { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
         .monthly-activity-section table th { background: #f1f5f9; color: #1e3a8a; font-weight: 700; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.3px; padding: 0.4rem 0.6rem; text-align: left; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 5; white-space: nowrap; }
-        .monthly-activity-section table td { padding: 0.3rem 0.6rem; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 0.7rem; }
-        .monthly-activity-section table tr:hover td { background: #f8fafc; }
-        .monthly-activity-section table .no-records td { text-align: center; padding: 1.5rem 0; color: #94a3b8; font-size: 0.8rem; }
+        .monthly-activity-section table td { padding: 0.3rem 0.6rem; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 0.7rem; cursor: pointer; transition: background 0.2s; }
+        .monthly-activity-section table td:first-child { cursor: pointer; }
+        .monthly-activity-section table tr:hover td { background: #f0f7ff; }
+        .monthly-activity-section table tr.clickable-row td { cursor: pointer; }
+        .monthly-activity-section table tr.clickable-row:hover td { background: #e8f0fe; }
+        .monthly-activity-section table .no-records td { text-align: center; padding: 1.5rem 0; color: #94a3b8; font-size: 0.8rem; cursor: default; }
+        .monthly-activity-section table .no-records:hover td { background: transparent; }
         .monthly-activity-section .record-count-small { font-size: 0.7rem; color: #64748b; margin-top: 0.4rem; text-align: right; }
         .monthly-activity-section .record-count-small span { font-weight: 700; color: #1e3a8a; }
         .monthly-activity-section .filter-label-group { display: flex; align-items: center; gap: 6px; }
@@ -160,6 +164,13 @@
         .footer-note { margin-top: 1.5rem; font-size: 0.65rem; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 1.2rem; letter-spacing: 0.5px; }
         .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(255, 255, 255, 0.15); border-top: 2px solid white; border-radius: 50%; animation: spin 0.7s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .detail-modal .modal-box { max-width: 600px; }
+        .detail-modal .modal-body { padding: 1.5rem 2rem; }
+        .detail-modal .detail-row { display: flex; padding: 0.5rem 0; border-bottom: 1px solid #f1f5f9; }
+        .detail-modal .detail-row:last-child { border-bottom: none; }
+        .detail-modal .detail-label { font-weight: 600; color: #475569; min-width: 140px; font-size: 0.8rem; }
+        .detail-modal .detail-value { color: #0f172a; font-size: 0.8rem; }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 99999; justify-content: center; align-items: center; padding: 1rem; animation: fadeIn 0.3s ease; }
         .modal-overlay.active { display: flex; }
@@ -304,6 +315,8 @@
             .monthly-activity-section .month-filters select { min-width: 100%; }
             .monthly-activity-section table { font-size: 0.6rem; }
             .monthly-activity-section table th, .monthly-activity-section table td { padding: 0.2rem 0.3rem; }
+            .detail-modal .detail-row { flex-direction: column; }
+            .detail-modal .detail-label { min-width: auto; }
         }
         @media (max-width: 400px) {
             .card { padding: 1rem; }
@@ -568,6 +581,25 @@
     </div>
 </div>
 
+<!-- ===== DETAIL VIEW MODAL ===== -->
+<div class="modal-overlay detail-modal" id="detailModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2><i class="fas fa-info-circle"></i> Record Details</h2>
+            <button class="close-btn" id="closeDetailModalBtn"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" id="detailModalBody">
+            <div id="detailContent">
+                <div style="text-align:center; padding:1rem; color:#94a3b8;">Loading details...</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <span class="record-count">Activity Details</span>
+            <button class="btn-close-modal" id="closeDetailModalBtn2">Close</button>
+        </div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="recordsModal">
     <div class="modal-box">
         <div class="modal-header">
@@ -766,7 +798,6 @@
     let activityLog = [];
     let monthlyRecords = [];
 
-    // Load from localStorage on startup
     function loadActivityLogFromStorage() {
         try {
             const stored = localStorage.getItem('planActivityLog');
@@ -789,44 +820,34 @@
     }
 
     async function loadActivityLogFromSheet() {
-    try {
-        // Get both activity log and monthly activity
-        const response = await fetch(WEB_APP_URL + '?action=getMonthlyActivity', { method: 'GET' });
-        const result = await response.json();
-        if (result.result === 'success' && result.activities && result.activities.length) {
-            // Use the monthly activity data which has full details
-            activityLog = result.activities.map(a => ({
-                time: a.time,
-                action: a.action,
-                province: a.province,
-                city: a.city,
-                details: a.details
-            }));
-            monthlyRecords = result.activities;
-            saveActivityLogToStorage();
-            return true;
+        try {
+            const response = await fetch(WEB_APP_URL + '?action=getMonthlyActivity', { method: 'GET' });
+            const result = await response.json();
+            if (result.result === 'success' && result.activities && result.activities.length) {
+                activityLog = result.activities.map(a => ({
+                    time: a.time,
+                    action: a.action,
+                    province: a.province,
+                    city: a.city,
+                    details: a.details
+                }));
+                monthlyRecords = result.activities;
+                saveActivityLogToStorage();
+                return true;
+            }
+        } catch (e) {
+            console.error('Error loading activity log from sheet:', e);
         }
-    } catch (e) {
-        console.error('Error loading activity log from sheet:', e);
+        return false;
     }
-    return false;
-}
 
     async function loadActivityLog() {
-        // First try localStorage
         const hasLocal = loadActivityLogFromStorage();
-        
-        // Then try to fetch from sheet (will override if sheet has data)
         const fromSheet = await loadActivityLogFromSheet();
-        
-        // If sheet had data, use it; otherwise keep local
         if (!fromSheet && !hasLocal) {
-            // No data anywhere, start with empty
             activityLog = [];
             monthlyRecords = [];
         }
-        
-        // Render
         populateYearFilter();
         renderActivityLog();
         renderMonthlyTable();
@@ -836,7 +857,6 @@
         const time = new Date().toISOString();
         const entry = { time, action, province, city, details };
         
-        // Send to sheet
         try {
             await fetch(WEB_APP_URL, {
                 method: 'POST',
@@ -850,7 +870,6 @@
             console.error('Error saving activity to sheet:', e);
         }
         
-        // Add to local
         activityLog.unshift(entry);
         if (activityLog.length > 200) activityLog.pop();
         monthlyRecords = [...activityLog];
@@ -861,6 +880,9 @@
         renderMonthlyTable();
     }
 
+    // ============================================
+    // RENDER ACTIVITY LOG - Simplified display
+    // ============================================
     function renderActivityLog() {
         const log = document.getElementById('activityLog');
         if (!activityLog.length) {
@@ -869,7 +891,27 @@
         }
         log.innerHTML = activityLog.slice(0, 20).map(e => {
             const badgeClass = e.action === 'Added' ? 'added' : e.action === 'Updated' ? 'updated' : 'deleted';
-            const detailText = e.details ? ` - ${e.details}` : '';
+            
+            // Build display text based on action type
+            let displayText = '';
+            if (e.province) displayText += e.province;
+            if (e.city) displayText += (displayText ? ' · ' : '') + e.city;
+            
+            // For Added: only show Province · City
+            if (e.action === 'Added') {
+                // Just province and city, nothing else
+            } 
+            // For Deleted: show Province · City - Record removed
+            else if (e.action === 'Deleted') {
+                displayText += ' - Record removed';
+            }
+            // For Updated: show Province · City - (full details)
+            else if (e.action === 'Updated' && e.details) {
+                displayText += ' - ' + e.details;
+            }
+            
+            if (!displayText) displayText = e.details || 'Activity recorded';
+            
             let timeStr = '';
             try {
                 const d = new Date(e.time);
@@ -880,7 +922,7 @@
             return `<div class="log-entry">
                 <span class="log-time">${timeStr}</span>
                 <span class="log-badge ${badgeClass}">${e.action}</span>
-                <span class="log-detail"><strong>${e.province || ''}</strong> ${e.city ? '· ' + e.city : ''}${detailText}</span>
+                <span class="log-detail">${displayText}</span>
             </div>`;
         }).join('');
     }
@@ -916,7 +958,7 @@
     }
 
     // ============================================
-    // MONTHLY ACTIVITY TABLE
+    // MONTHLY ACTIVITY TABLE - Simplified for Added/Deleted
     // ============================================
     function renderMonthlyTable() {
         const tbody = document.getElementById('monthlyTableBody');
@@ -958,10 +1000,9 @@
             return;
         }
         
-        // Sort by time descending (newest first)
         filtered.sort((a, b) => new Date(b.time) - new Date(a.time));
         
-        tbody.innerHTML = filtered.slice(0, 50).map(r => {
+        tbody.innerHTML = filtered.slice(0, 50).map((r, idx) => {
             let dateStr = '';
             try {
                 const d = new Date(r.time);
@@ -978,77 +1019,58 @@
             let latestInfo = '';
             let infoBadgeClass = '';
             
-            if (r.details) {
-                if (r.action === 'Added') {
-                    latestInfo = 'Added new record';
-                    infoBadgeClass = 'record-added';
-                    const parts = r.details.split('·').map(s => s.trim());
-                    if (parts.length >= 2) {
-                        const statusPart = parts[1] || '';
-                        const statusMatch = statusPart.match(/(Pre-Phase|Phase \d|RA\d|None Indicated)/i);
-                        if (statusMatch) {
-                            updatedStatus = statusMatch[0];
-                        } else {
-                            updatedStatus = statusPart;
-                        }
-                    }
-                } 
-                else if (r.action === 'Deleted') {
-                    latestInfo = 'Record removed';
-                    infoBadgeClass = 'record-removed';
-                    updatedStatus = 'Record removed';
-                } 
-                else if (r.action === 'Updated') {
+            if (r.action === 'Added') {
+                // For Added: show "-" for both statuses
+                initialStatus = '-';
+                updatedStatus = '-';
+                latestInfo = 'Added new record';
+                infoBadgeClass = 'record-added';
+            } else if (r.action === 'Deleted') {
+                // For Deleted: show "-" for both statuses
+                initialStatus = '-';
+                updatedStatus = '-';
+                latestInfo = 'Record removed';
+                infoBadgeClass = 'record-removed';
+            } else if (r.action === 'Updated') {
+                // For Updated: parse statuses from details
+                if (r.details) {
                     const fullMatch = r.details.match(/Initial\s*Status:\s*([^,→]+)\s*→\s*([^,]+)(?:,\s*Updated\s*Status:\s*([^,→]+)\s*→\s*([^,]+))?/i);
                     if (fullMatch) {
-                        initialStatus = fullMatch[1] ? fullMatch[1].trim() : '-';
-                        if (fullMatch[3] && fullMatch[4]) {
-                            updatedStatus = fullMatch[4].trim();
-                            latestInfo = 'Updated Initial Status & Updated Status';
-                            infoBadgeClass = 'initial-updated';
-                        } else {
-                            updatedStatus = fullMatch[2] ? fullMatch[2].trim() : '-';
-                            if (r.details.toLowerCase().includes('updated status')) {
-                                latestInfo = 'Updated the Updated Status';
-                                infoBadgeClass = 'status-updated';
+                        if (fullMatch[1] && fullMatch[2]) {
+                            initialStatus = fullMatch[1].trim();
+                            if (fullMatch[3] && fullMatch[4]) {
+                                updatedStatus = fullMatch[4].trim();
+                                latestInfo = 'Updated Initial & Updated Status';
+                                infoBadgeClass = 'initial-updated';
                             } else {
-                                latestInfo = 'Updated the Initial Status';
+                                updatedStatus = fullMatch[2].trim();
+                                latestInfo = 'Updated Initial Status';
                                 infoBadgeClass = 'initial-updated';
                             }
                         }
                     } else {
                         const simpleMatch = r.details.match(/Status:\s*([^,→]+)\s*→\s*([^,]+)/i);
                         if (simpleMatch) {
-                            if (r.details.toLowerCase().includes('updated status')) {
-                                updatedStatus = simpleMatch[2] ? simpleMatch[2].trim() : '-';
-                                latestInfo = 'Updated the Updated Status';
-                                infoBadgeClass = 'status-updated';
-                            } else if (r.details.toLowerCase().includes('initial status')) {
-                                initialStatus = simpleMatch[1] ? simpleMatch[1].trim() : '-';
-                                updatedStatus = simpleMatch[2] ? simpleMatch[2].trim() : '-';
-                                latestInfo = 'Updated the Initial Status';
-                                infoBadgeClass = 'initial-updated';
-                            } else {
-                                const statuses = ['Pre-Phase','Phase 1','Phase 2','Phase 3','Phase 4','Phase 5','RA1','RA2','RA3','RA4','RA5','RA6','RA7','None Indicated'];
-                                const isInitial = statuses.includes(simpleMatch[1].trim());
-                                const isUpdated = statuses.includes(simpleMatch[2].trim());
-                                if (isInitial && isUpdated) {
-                                    initialStatus = simpleMatch[1].trim();
-                                    updatedStatus = simpleMatch[2].trim();
-                                    latestInfo = 'Updated Initial Status → Updated Status';
-                                    infoBadgeClass = 'initial-updated';
-                                }
-                            }
+                            initialStatus = simpleMatch[1].trim();
+                            updatedStatus = simpleMatch[2].trim();
+                            latestInfo = 'Updated Status';
+                            infoBadgeClass = 'status-updated';
                         } else {
-                            const statusMatch = r.details.match(/(Pre-Phase|Phase \d|RA\d|None Indicated)/gi);
-                            if (statusMatch && statusMatch.length >= 2) {
-                                initialStatus = statusMatch[0] || '-';
-                                updatedStatus = statusMatch[statusMatch.length - 1] || '-';
-                                latestInfo = 'Updated Initial Status & Updated Status';
+                            const statuses = ['Pre-Phase','Phase 1','Phase 2','Phase 3','Phase 4','Phase 5','RA1','RA2','RA3','RA4','RA5','RA6','RA7','None Indicated'];
+                            const foundStatuses = [];
+                            statuses.forEach(s => {
+                                if (r.details.includes(s)) {
+                                    foundStatuses.push(s);
+                                }
+                            });
+                            if (foundStatuses.length >= 2) {
+                                initialStatus = foundStatuses[0];
+                                updatedStatus = foundStatuses[foundStatuses.length - 1];
+                                latestInfo = 'Updated Initial & Updated Status';
                                 infoBadgeClass = 'initial-updated';
-                            } else if (statusMatch && statusMatch.length === 1) {
-                                updatedStatus = statusMatch[0];
-                                latestInfo = 'Updated the Updated Status';
+                            } else if (foundStatuses.length === 1) {
+                                updatedStatus = foundStatuses[0];
+                                latestInfo = 'Updated Status';
                                 infoBadgeClass = 'status-updated';
                             } else {
                                 latestInfo = 'Record updated';
@@ -1056,40 +1078,17 @@
                             }
                         }
                     }
-                    if (!latestInfo) {
-                        latestInfo = 'Record updated';
-                        infoBadgeClass = 'record-updated';
-                    }
-                } else {
-                    latestInfo = r.action || 'Action performed';
-                    infoBadgeClass = 'record-updated';
                 }
-            }
-            
-            if (initialStatus !== '-') {
-                initialStatus = initialStatus.replace(/\s+/g, ' ').trim();
-            }
-            if (updatedStatus !== '-') {
-                updatedStatus = updatedStatus.replace(/\s+/g, ' ').trim();
-            }
-            
-            if (!latestInfo) {
-                if (r.action === 'Added') {
-                    latestInfo = 'Added new record';
-                    infoBadgeClass = 'record-added';
-                } else if (r.action === 'Deleted') {
-                    latestInfo = 'Record removed';
-                    infoBadgeClass = 'record-removed';
-                } else if (r.action === 'Updated') {
+                if (!latestInfo) {
                     latestInfo = 'Record updated';
                     infoBadgeClass = 'record-updated';
-                } else {
-                    latestInfo = r.action || 'Activity performed';
-                    infoBadgeClass = 'record-updated';
                 }
+            } else {
+                latestInfo = r.details || 'Activity performed';
+                infoBadgeClass = 'record-updated';
             }
             
-            return `<tr>
+            return `<tr class="clickable-row" data-index="${idx}" onclick="showDetail(${idx})">
                 <td>${r.province || '-'}</td>
                 <td>${r.city || '-'}</td>
                 <td>${initialStatus}</td>
@@ -1101,6 +1100,111 @@
         
         document.getElementById('monthlyCount').textContent = filtered.length;
     }
+
+    // ============================================
+    // DETAIL VIEW - Show full record details
+    // ============================================
+    function showDetail(index) {
+        const records = monthlyRecords;
+        if (index < 0 || index >= records.length) {
+            showToast('❌ Error', 'Record not found.', 'error');
+            return;
+        }
+        
+        const r = records[index];
+        const detailModal = document.getElementById('detailModal');
+        const detailContent = document.getElementById('detailContent');
+        
+        let dateStr = '';
+        try {
+            const d = new Date(r.time);
+            dateStr = d.toLocaleString('en-US', { 
+                month: 'long', 
+                day: 'numeric', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        } catch (e) {
+            dateStr = r.time || '';
+        }
+        
+        let fullDetails = r.details || 'No additional details';
+        
+        let initialStatus = '-';
+        let updatedStatus = '-';
+        if (r.details) {
+            if (r.action === 'Updated') {
+                const fullMatch = r.details.match(/Initial\s*Status:\s*([^,→]+)\s*→\s*([^,]+)(?:,\s*Updated\s*Status:\s*([^,→]+)\s*→\s*([^,]+))?/i);
+                if (fullMatch) {
+                    if (fullMatch[1] && fullMatch[2]) {
+                        initialStatus = fullMatch[1].trim();
+                        if (fullMatch[3] && fullMatch[4]) {
+                            updatedStatus = fullMatch[4].trim();
+                        } else {
+                            updatedStatus = fullMatch[2].trim();
+                        }
+                    }
+                } else {
+                    const simpleMatch = r.details.match(/Status:\s*([^,→]+)\s*→\s*([^,]+)/i);
+                    if (simpleMatch) {
+                        initialStatus = simpleMatch[1].trim();
+                        updatedStatus = simpleMatch[2].trim();
+                    }
+                }
+            }
+        }
+        
+        let html = `
+            <div class="detail-row">
+                <div class="detail-label">Action</div>
+                <div class="detail-value"><span class="log-badge ${r.action === 'Added' ? 'added' : r.action === 'Updated' ? 'updated' : 'deleted'}">${r.action}</span></div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Province</div>
+                <div class="detail-value">${r.province || '-'}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">City/Municipality</div>
+                <div class="detail-value">${r.city || '-'}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Initial Status</div>
+                <div class="detail-value">${initialStatus}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Updated Status</div>
+                <div class="detail-value">${updatedStatus}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Date & Time</div>
+                <div class="detail-value">${dateStr}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Details</div>
+                <div class="detail-value">${fullDetails}</div>
+            </div>
+        `;
+        
+        detailContent.innerHTML = html;
+        detailModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDetailModal() {
+        document.getElementById('detailModal').classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+
+    document.getElementById('closeDetailModalBtn').addEventListener('click', closeDetailModal);
+    document.getElementById('closeDetailModalBtn2').addEventListener('click', closeDetailModal);
+    document.getElementById('detailModal').addEventListener('click', function(e) {
+        if (e.target === this) closeDetailModal();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeDetailModal();
+    });
 
     document.getElementById('applyMonthlyFilter').addEventListener('click', renderMonthlyTable);
     document.getElementById('monthlyFilterMonth').addEventListener('change', renderMonthlyTable);
@@ -1457,7 +1561,7 @@
             
             if (result.result === 'success') {
                 showToast('✅ Success', 'Record saved to Google Sheet!', 'success');
-                await addActivityLog('Added', payload.province, payload.cityMun, `${payload.typeMonitoring} · ${payload.updatedStatus}`);
+                await addActivityLog('Added', payload.province, payload.cityMun, '');
                 
                 planForm.reset();
                 document.getElementById('plan_dateConducted').value = new Date().toISOString().split('T')[0];
@@ -1481,7 +1585,7 @@
                     body: JSON.stringify(payload)
                 });
                 showToast('✅ Success', 'Record saved to Google Sheet!', 'success');
-                await addActivityLog('Added', payload.province, payload.cityMun, `${payload.typeMonitoring} · ${payload.updatedStatus}`);
+                await addActivityLog('Added', payload.province, payload.cityMun, '');
                 planForm.reset();
                 document.getElementById('plan_dateConducted').value = new Date().toISOString().split('T')[0];
                 document.getElementById('plan_region').value = 'Region_06';
@@ -1587,7 +1691,7 @@
     }
 
     // ============================================
-    // RENDER TABLE - FIXED FOR FILTERED VIEWS
+    // RENDER TABLE
     // ============================================
     async function renderTable(records) {
         if (picNames.length === 0) await loadPICNamesFromSheet();
@@ -1705,9 +1809,6 @@
         document.getElementById('displayCount').textContent = records.length;
     }
 
-    // ============================================
-    // START EDIT ROW
-    // ============================================
     window.startEditRow = function(row) { 
         editingRowNumber = row; 
         applyRecordFilters(); 
@@ -1719,7 +1820,7 @@
     };
 
     // ============================================
-    // SAVE EDIT ROW - FIXED FOR FILTERED VIEWS
+    // SAVE EDIT ROW
     // ============================================
     window.saveEditRow = async function(rowNumber) {
         const saveBtn = document.getElementById(`saveBtn_${rowNumber}`);
@@ -1842,7 +1943,7 @@
     };
 
     // ============================================
-    // DELETE RECORD - FIXED
+    // DELETE RECORD
     // ============================================
     window.deleteRecord = async function(rowNumber) {
         if (!confirm('Delete this record permanently?')) return;
@@ -1963,7 +2064,7 @@
     });
 
     // ============================================
-    // CHART FUNCTIONS - UPDATED TO SHOW ALL STATUSES INCLUDING PRE-PHASE
+    // CHART FUNCTIONS
     // ============================================
     const chartModal = document.getElementById('chartModal');
 
@@ -2024,22 +2125,17 @@
         document.getElementById('statMonths').textContent = months.size;
 
         let labels, data, chartTitle, datasetLabel;
-        // Define the correct order: Pre-Phase first, then Phase 1-5, then RA1-RA7, then None Indicated
         const statuses = ['Pre-Phase','Phase 1','Phase 2','Phase 3','Phase 4','Phase 5','RA1','RA2','RA3','RA4','RA5','RA6','RA7','None Indicated'];
 
         if (currentChartType === 'status') {
             const counts = {};
-            // Initialize all statuses with 0
             statuses.forEach(s => counts[s] = 0);
             filtered.forEach(r => {
-                // Use Updated Status first, fallback to Initial Status, then None Indicated
                 let s = r['Updated Status'] || r['Initial Status'] || 'None Indicated';
-                // Normalize: ensure exact match
                 if (s === 'Pre-phase') s = 'Pre-Phase';
                 if (counts.hasOwnProperty(s)) counts[s]++;
                 else counts[s] = 1;
             });
-            // Keep only statuses that appear in the data, but preserve the defined order
             labels = statuses.filter(k => counts[k] > 0);
             data = labels.map(k => counts[k]);
             chartTitle = 'Status Distribution' + (monthFilter !== 'all' ? ' - ' + monthFilter : '');
