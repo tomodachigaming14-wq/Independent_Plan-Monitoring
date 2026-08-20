@@ -1123,8 +1123,8 @@ function renderMonthlyTable() {
     document.getElementById('monthlyCount').textContent = filtered.length;
 }
 
-   // ============================================
-// DETAIL VIEW - Show full record details
+// ============================================
+// DETAIL VIEW - Show full record details with clean formatting
 // ============================================
 function showDetail(index) {
     const records = monthlyRecords;
@@ -1155,49 +1155,133 @@ function showDetail(index) {
     let initialStatus = '-';
     let updatedStatus = '-';
     let displayDetails = r.details || 'No additional details';
+    let initialChange = '';
+    let updatedChange = '';
     
-    // Parse the details to extract initial and updated status
+    // Parse the details to extract initial and updated status with arrows
     if (r.details) {
-        // Try to parse "Initial Status: X → Y" format
-        const fullMatch = r.details.match(/Initial\s*Status:\s*([^→]+)\s*→\s*([^,]+)/i);
-        if (fullMatch) {
-            initialStatus = fullMatch[1].trim();
-            updatedStatus = fullMatch[2].trim();
-            // Reconstruct details in a cleaner format
-            displayDetails = 'Initial Status: ' + initialStatus + '\nUpdated Status: ' + updatedStatus;
-        } else {
-            // Try to parse "Status: X → Y" format
-            const simpleMatch = r.details.match(/Status:\s*([^→]+)\s*→\s*([^,]+)/i);
-            if (simpleMatch) {
-                initialStatus = simpleMatch[1].trim();
-                updatedStatus = simpleMatch[2].trim();
-                displayDetails = 'Initial Status: ' + initialStatus + '\nUpdated Status: ' + updatedStatus;
+        if (r.action === 'Added') {
+            // For Added: show just the statuses with a dash
+            const match = r.details.match(/Initial\s*Status:\s*([^→]+)\s*→\s*([^,]+)/i);
+            if (match) {
+                initialStatus = match[1].trim();
+                updatedStatus = match[2].trim();
+                // Clean format: just the statuses with a dash
+                displayDetails = initialStatus + ' - ' + updatedStatus;
             } else {
-                // Try to find statuses with arrows
-                const arrowMatch = r.details.match(/(Pre-Phase|Phase \d|RA\d|None Indicated)\s*→\s*(Pre-Phase|Phase \d|RA\d|None Indicated)/i);
-                if (arrowMatch) {
-                    initialStatus = arrowMatch[1];
-                    updatedStatus = arrowMatch[2];
-                    displayDetails = 'Initial Status: ' + initialStatus + '\nUpdated Status: ' + updatedStatus;
-                } else {
-                    // Try to find statuses without arrows
-                    const statuses = ['Pre-Phase','Phase 1','Phase 2','Phase 3','Phase 4','Phase 5','RA1','RA2','RA3','RA4','RA5','RA6','RA7','None Indicated'];
-                    const foundStatuses = [];
-                    statuses.forEach(s => {
-                        if (r.details.includes(s)) {
-                            foundStatuses.push(s);
-                        }
-                    });
-                    if (foundStatuses.length >= 2) {
-                        initialStatus = foundStatuses[0];
-                        updatedStatus = foundStatuses[foundStatuses.length - 1];
-                        displayDetails = 'Initial Status: ' + initialStatus + '\nUpdated Status: ' + updatedStatus;
-                    } else if (foundStatuses.length === 1) {
-                        updatedStatus = foundStatuses[0];
-                        displayDetails = 'Updated Status: ' + updatedStatus;
+                const statuses = ['Pre-Phase','Phase 1','Phase 2','Phase 3','Phase 4','Phase 5','RA1','RA2','RA3','RA4','RA5','RA6','RA7','None Indicated'];
+                const found = [];
+                statuses.forEach(s => {
+                    if (r.details.includes(s)) {
+                        found.push(s);
+                    }
+                });
+                if (found.length >= 2) {
+                    initialStatus = found[0];
+                    updatedStatus = found[found.length - 1];
+                    displayDetails = initialStatus + ' - ' + updatedStatus;
+                } else if (found.length === 1) {
+                    updatedStatus = found[0];
+                    displayDetails = updatedStatus;
+                }
+            }
+        } else if (r.action === 'Updated') {
+            // For Updated: show the changes with arrows
+            let initialOld = '', initialNew = '', updatedOld = '', updatedNew = '';
+            
+            // Try to parse "Initial Status: X → Y"
+            const initialMatch = r.details.match(/Initial\s*Status:\s*([^→]+)\s*→\s*([^,]+)/i);
+            if (initialMatch) {
+                initialOld = initialMatch[1].trim();
+                initialNew = initialMatch[2].trim();
+                initialStatus = initialNew; // Show the new value
+                initialChange = initialOld + ' → ' + initialNew;
+            }
+            
+            // Try to parse "Updated Status: X → Y"
+            const updatedMatch = r.details.match(/Updated\s*Status:\s*([^→]+)\s*→\s*([^,]+)/i);
+            if (updatedMatch) {
+                updatedOld = updatedMatch[1].trim();
+                updatedNew = updatedMatch[2].trim();
+                updatedStatus = updatedNew; // Show the new value
+                updatedChange = updatedOld + ' → ' + updatedNew;
+            }
+            
+            // If no "Updated Status:" found, try the simple "Status: X → Y" pattern
+            if (!updatedMatch) {
+                const simpleMatch = r.details.match(/Status:\s*([^→]+)\s*→\s*([^,]+)/i);
+                if (simpleMatch) {
+                    if (!initialOld && !initialNew) {
+                        initialOld = simpleMatch[1].trim();
+                        initialNew = simpleMatch[2].trim();
+                        initialStatus = initialNew;
+                        initialChange = initialOld + ' → ' + initialNew;
+                    } else {
+                        updatedOld = simpleMatch[1].trim();
+                        updatedNew = simpleMatch[2].trim();
+                        updatedStatus = updatedNew;
+                        updatedChange = updatedOld + ' → ' + updatedNew;
                     }
                 }
             }
+            
+            // Fallback: try to find status values in the details
+            if (!initialOld && !updatedOld) {
+                const statuses = ['Pre-Phase','Phase 1','Phase 2','Phase 3','Phase 4','Phase 5','RA1','RA2','RA3','RA4','RA5','RA6','RA7','None Indicated'];
+                const found = [];
+                statuses.forEach(s => {
+                    if (r.details.includes(s)) {
+                        found.push(s);
+                    }
+                });
+                if (found.length >= 2) {
+                    if (!initialOld) {
+                        initialOld = found[found.length - 2];
+                        initialNew = found[found.length - 1];
+                        initialStatus = initialNew;
+                        initialChange = initialOld + ' → ' + initialNew;
+                    }
+                } else if (found.length === 1) {
+                    if (!updatedOld) {
+                        updatedOld = found[0];
+                        updatedNew = found[0];
+                        updatedStatus = updatedNew;
+                        updatedChange = updatedOld + ' → ' + updatedNew;
+                    }
+                }
+            }
+            
+            // Build the display details with arrows
+            let detailLines = [];
+            if (initialChange) {
+                detailLines.push('Initial Status: ' + initialChange);
+            }
+            if (updatedChange && updatedChange !== initialChange) {
+                detailLines.push('Updated Status: ' + updatedChange);
+            }
+            // If we have no changes but have details, show the raw details
+            if (detailLines.length === 0 && r.details) {
+                displayDetails = r.details;
+            } else if (detailLines.length > 0) {
+                displayDetails = detailLines.join('\n');
+            }
+            
+            // Also handle the case where we only have one status change
+            if (r.details && !r.details.includes('Initial Status:') && !r.details.includes('Updated Status:')) {
+                const simpleMatch = r.details.match(/(Pre-Phase|Phase \d|RA\d|None Indicated)\s*→\s*(Pre-Phase|Phase \d|RA\d|None Indicated)/i);
+                if (simpleMatch) {
+                    const oldVal = simpleMatch[1];
+                    const newVal = simpleMatch[2];
+                    if (!initialChange && !updatedChange) {
+                        initialChange = oldVal + ' → ' + newVal;
+                        initialStatus = newVal;
+                        displayDetails = 'Status: ' + initialChange;
+                    }
+                }
+            }
+        } else if (r.action === 'Deleted') {
+            // For Deleted: just show the details
+            displayDetails = r.details || 'Record removed';
         }
     }
     
